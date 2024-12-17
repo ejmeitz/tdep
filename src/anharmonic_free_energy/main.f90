@@ -255,7 +255,8 @@ getenergy: block
                 write(u, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [units?]> <irred-q-point-weight> <value>'
                 ! qv1 = qp%ip(q1)%r  to get the q-point coordinate
                 ! om1 = dr%iq(q1)%omega(b1) to get frequency of mode in branch b1 at irred-q-point q1
-                ! need to convert frequency units likely
+                ! qp%ip(q1)%integration_weight to get integration weight of irred-q-point q1
+                ! need to convert frequency units, what are they to start with?
                 !TODO
             endif
             if(opts%fourthorder) then

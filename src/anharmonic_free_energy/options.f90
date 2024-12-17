@@ -60,6 +60,10 @@ subroutine parse(opts)
                  help='Compute fourth order anharmonic correction to the free energy', &
                  required=.false., act='store_true', def='.false.', error=lo_status)
     if (lo_status .ne. 0) stop
+    call cli%add(switch='--modevalues', &
+                 help='Return free energy values for each mode.', &
+                 required=.false., act='store_true', def='.false.', error=lo_status)
+    if (lo_status .ne. 0) stop
     cli_manpage
     cli_verbose
 
@@ -84,10 +88,15 @@ subroutine parse(opts)
     call cli%get(switch='--stochastic', val=opts%stochastic, error=lo_status); errctr = errctr + lo_status
     call cli%get(switch='--thirdorder', val=opts%thirdorder, error=lo_status); errctr = errctr + lo_status
     call cli%get(switch='--fourthorder', val=opts%fourthorder, error=lo_status); errctr = errctr + lo_status
+    call cli%get(switch='--modevalues', val=opts%modevalues, error=lo_status); errctr = errctr + lo_status
 
     ! If we have fourthorder we should also have thirdorder
     if (opts%fourthorder) opts%thirdorder = .true.
 
+    if (opts%modevalues .and. .not. opts%thirdorder) then
+        call lo_stop_gracefully(['Returning mode values, requies perturbative free energy calculation'], lo_exitcode_baddim)
+    end if
+    
     if (errctr .ne. 0) call lo_stop_gracefully(['Failed parsing the command line options'], lo_exitcode_baddim)
 
 end subroutine

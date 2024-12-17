@@ -16,6 +16,7 @@ type lo_opts
     logical :: stochastic = .false.
     logical :: thirdorder = .false.
     logical :: fourthorder = .false.
+    logical :: modevalues = .false.
 contains
     procedure :: parse
 end type
@@ -61,7 +62,7 @@ subroutine parse(opts)
                  required=.false., act='store_true', def='.false.', error=lo_status)
     if (lo_status .ne. 0) stop
     call cli%add(switch='--modevalues', &
-                 help='Return free energy values for each mode.', &
+                 help='Return free energy corrections for each mode.', &
                  required=.false., act='store_true', def='.false.', error=lo_status)
     if (lo_status .ne. 0) stop
     cli_manpage
@@ -96,7 +97,7 @@ subroutine parse(opts)
     if (opts%modevalues .and. .not. opts%thirdorder) then
         call lo_stop_gracefully(['Returning mode values, requies perturbative free energy calculation'], lo_exitcode_baddim)
     end if
-    
+
     if (errctr .ne. 0) call lo_stop_gracefully(['Failed parsing the command line options'], lo_exitcode_baddim)
 
 end subroutine

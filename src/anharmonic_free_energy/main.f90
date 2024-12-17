@@ -17,7 +17,8 @@ use lo_phonon_bandstructure_on_path, only: lo_phonon_bandstructure
 use type_phonon_dos, only: lo_phonon_dos
 
 use options, only: lo_opts
-use energy, only: perturbative_anharmonic_free_energy
+! use energy, only: perturbative_anharmonic_free_energy
+use energy_ethan, only: perturbative_anharmonic_free_energy
 use epot, only: lo_energy_differences
 
 implicit none
@@ -172,6 +173,10 @@ getenergy: block
     integer :: u
     character(len=1000) :: opf
 
+    ! these may or may not get allocated inside perturbative_anharmonic_free_energy
+    real(r8), dimension(:, :), allocatable :: en3, en4
+
+
     ! Some heuristics to figure out what the temperature is.
     if (opts%quantum) then
         f_ph = dr%phonon_free_energy(sim%temperature_thermostat)
@@ -181,8 +186,13 @@ getenergy: block
 
     if (havehighorder) then
         select type (qp); type is (lo_fft_mesh)
-            call perturbative_anharmonic_free_energy(uc, fct, fcf, qp, dr, sim%temperature_thermostat, ah3, ah4, &
+            if (opts%modevalues) then
+                call perturbative_anharmonic_free_energy(uc, fct, fcf, qp, dr, sim%temperature_thermostat, ah3, ah4, &
+                                                     opts%fourthorder, opts%quantum, mw, mem, opts%verbosity + 1, en3, en4)
+            else
+                call perturbative_anharmonic_free_energy(uc, fct, fcf, qp, dr, sim%temperature_thermostat, ah3, ah4, &
                                                      opts%fourthorder, opts%quantum, mw, mem, opts%verbosity + 1)
+            end if
         end select
     else
         ah3 = 0.0_r8
@@ -238,6 +248,21 @@ getenergy: block
             write (*, opf) 'F_4 =', ah4*lo_Hartree_to_eV
             write (*, opf) 'Second order cumulant =', cumulant(2, 5)*lo_Hartree_to_eV
             write (*, opf) 'Third order cumulant =', cumulant(3, 5)*lo_Hartree_to_eV
+        end if
+        if (opts%modevalues) then
+            if (opts%thirdorder .or. opts%fourthorder) then
+                write(u, *) '# Third order anharmonic corrections for each mode'
+                write(u, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [units?]> <irred-q-point-weight> <value>'
+                ! qv1 = qp%ip(q1)%r  to get the q-point coordinate
+                !TODO
+            endif
+            if(opts%fourthorder) then
+                write(u, *) '# Fourth order anharmonic corrections for each mode'
+                write(u, *) '# Columns are <irred-q-point-idx> <branch-idx> <frequency> <irred-q-point-weight> <value>'
+            endif
+
+            call mem%deallocate(en3, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
+            call mem%deallocate(en4, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
         end if
     end if
 

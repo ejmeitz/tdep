@@ -1,6 +1,6 @@
 program anharmonic_free_energy
 !!{!src/anharmonic_free_energy/manual.md!}
-use konstanter, only: r8, lo_Hartree_to_eV, lo_kb_Hartree, lo_pressure_HartreeBohr_to_GPa
+use konstanter, only: r8, lo_Hartree_to_eV, lo_kb_Hartree, lo_pressure_HartreeBohr_to_GPa, lo_frequency_Hartree_to_THz
 use gottochblandat, only: open_file, walltime, lo_linspace, lo_progressbar_init, lo_progressbar, tochar, &
                           lo_does_file_exist, lo_mean, lo_stddev
 use mpi_wrappers, only: lo_mpi_helper
@@ -268,8 +268,8 @@ getenergy: block
                 do q1 = 1, qp%n_irr_point
                     do b1 = 1, dr%n_mode
 
-                        write(u, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1,&
-                                       dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz,
+                        write(u, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, &
+                                       dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
                                        qp%ip(q1)%integration_weight, en4(b1, q1)
                     end do
                 end do

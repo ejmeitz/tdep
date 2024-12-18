@@ -171,7 +171,7 @@ end block epotthings
 getenergy: block
     real(r8) :: f_ph, ah3, ah4, fe2_1, fe2_2, fe3_1, fe3_2, fe4_1, fe4_2, pref
     integer :: u
-    character(len=1000) :: opf
+    character(len=1000) :: opf, opf2
 
     ! these may or may not get allocated inside perturbative_anharmonic_free_energy
     real(r8), dimension(:, :), allocatable :: en3, en4
@@ -250,18 +250,26 @@ getenergy: block
             write (*, opf) 'Third order cumulant =', cumulant(3, 5)*lo_Hartree_to_eV
         end if
         if (opts%modevalues) then
+            ofp2 = '(1X, 3(F25.10, ' '), I8, 1X, F12.6, 1X, I8, 1X, 25.10)'
             if (opts%thirdorder .or. opts%fourthorder) then
                 write(u, *) '# Third order anharmonic corrections for each mode'
                 write(u, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [units?]> <irred-q-point-weight> <value>'
-                ! qv1 = qp%ip(q1)%r  to get the q-point coordinate
-                ! om1 = dr%iq(q1)%omega(b1) to get frequency of mode in branch b1 at irred-q-point q1
-                ! qp%ip(q1)%integration_weight to get integration weight of irred-q-point q1
-                ! need to convert frequency units, what are they to start with?
-                !TODO
+                do q1 = 1, qp%n_irr_point
+                    do b1 = 1, dr%n_mode
+                        ! TODO NEED TO CONVERT FREQ UNITS.... sqrt(lo_Hartree_to_eV)??
+                        write(u, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, dr%iq(q1)%omega(b1), qp%ip(q1)%integration_weight, en3(b1, q1)
+                    end do
+                end do
             endif
             if(opts%fourthorder) then
                 write(u, *) '# Fourth order anharmonic corrections for each mode'
                 write(u, *) '# Columns are <irred-q-point-idx> <branch-idx> <frequency> <irred-q-point-weight> <value>'
+                do q1 = 1, qp%n_irr_point
+                    do b1 = 1, dr%n_mode
+                        ! TODO NEED TO CONVERT FREQ UNITS.... sqrt(lo_Hartree_to_eV)??
+                        write(u, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, dr%iq(q1)%omega(b1), qp%ip(q1)%integration_weight, en4(b1, q1)
+                    end do
+                end do
             endif
 
             call mem%deallocate(en3, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)

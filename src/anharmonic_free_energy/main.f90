@@ -253,21 +253,24 @@ getenergy: block
             opf2 = "(1X, 3(F25.10, ' '), I8, 1X, F12.6, 1X, I8, 1X, 25.10)"
             if (opts%thirdorder .or. opts%fourthorder) then
                 write(u, *) '# Third order anharmonic corrections for each mode'
-                write(u, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [units?]> <irred-q-point-weight> <value>'
+                write(u, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [THz]> <irred-q-point-weight> <F_3_n>'
                 do q1 = 1, qp%n_irr_point
                     do b1 = 1, dr%n_mode
-                        ! TODO NEED TO CONVERT FREQ UNITS.... sqrt(lo_Hartree_to_eV)??
-                        write(u, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, dr%iq(q1)%omega(b1), qp%ip(q1)%integration_weight, en3(b1, q1)
+                        write(u, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, &
+                                       dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
+                                       qp%ip(q1)%integration_weight, en3(b1, q1)
                     end do
                 end do
             endif
             if(opts%fourthorder) then
                 write(u, *) '# Fourth order anharmonic corrections for each mode'
-                write(u, *) '# Columns are <irred-q-point-idx> <branch-idx> <frequency> <irred-q-point-weight> <value>'
+                write(u, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [THz]> <irred-q-point-weight> <F_4_n>'
                 do q1 = 1, qp%n_irr_point
                     do b1 = 1, dr%n_mode
-                        ! TODO NEED TO CONVERT FREQ UNITS.... sqrt(lo_Hartree_to_eV)??
-                        write(u, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, dr%iq(q1)%omega(b1), qp%ip(q1)%integration_weight, en4(b1, q1)
+
+                        write(u, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1,&
+                                       dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz,
+                                       qp%ip(q1)%integration_weight, en4(b1, q1)
                     end do
                 end do
             endif

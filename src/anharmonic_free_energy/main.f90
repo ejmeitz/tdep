@@ -18,7 +18,7 @@ use type_phonon_dos, only: lo_phonon_dos
 
 use options, only: lo_opts
 ! use energy, only: perturbative_anharmonic_free_energy
-use energy_ethan, only: perturbative_anharmonic_free_energy
+use energy, only: perturbative_anharmonic_free_energy
 use epot, only: lo_energy_differences
 
 implicit none
@@ -170,7 +170,7 @@ end block epotthings
 ! Calculate the actual free energy
 getenergy: block
     real(r8) :: f_ph, ah3, ah4, fe2_1, fe2_2, fe3_1, fe3_2, fe4_1, fe4_2, pref
-    integer :: u
+    integer :: u, b1, q1
     character(len=1000) :: opf, opf2
 
     ! these may or may not get allocated inside perturbative_anharmonic_free_energy
@@ -250,7 +250,7 @@ getenergy: block
             write (*, opf) 'Third order cumulant =', cumulant(3, 5)*lo_Hartree_to_eV
         end if
         if (opts%modevalues) then
-            ofp2 = '(1X, 3(F25.10, ' '), I8, 1X, F12.6, 1X, I8, 1X, 25.10)'
+            opf2 = "(1X, 3(F25.10, ' '), I8, 1X, F12.6, 1X, I8, 1X, 25.10)"
             if (opts%thirdorder .or. opts%fourthorder) then
                 write(u, *) '# Third order anharmonic corrections for each mode'
                 write(u, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [units?]> <irred-q-point-weight> <value>'

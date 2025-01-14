@@ -310,9 +310,10 @@ subroutine parse(opts)
     if (lo_status .ne. 0) stop
 
     ! Try to resolve conflicting options:
-    if (opts%readirreducible) then
-        opts%readforcemap = .true.
-    end if
+!     if (opts%readirreducible) then
+!         opts%readforcemap = .true.
+!     end if
+    
     if (opts%njump2 .gt. 0 .and. opts%wzdimensions(1) .gt. 0) then
 
     end if

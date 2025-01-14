@@ -65,6 +65,7 @@ getfrcmap: block
         !                                   opts%rotationalconstraints, opts%huanginvariance, opts%hermitian)
     else
         ! Now we have to calculate the whole thing.
+        if (mw%talk) write (lo_iou, *) '==> BUILDING FORCE MAP FROM SCRATCH <=='
         call uc%classify('wedge', timereversal=.true.)
         call ss%readfromfile('infile.ssposcar')
         if (mw%talk) write (*, '(1X,A,1X,F12.5)') '... min cutoff: ', ss%mincutoff()*lo_bohr_to_A

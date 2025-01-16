@@ -3,7 +3,9 @@ module energy
     use konstanter, only: r8, i8, lo_twopi, lo_freqtol, lo_imag, lo_sqtol, lo_status, lo_kb_Hartree
     use gottochblandat, only: lo_stop_gracefully, tochar, walltime, lo_chop, lo_trueNtimes, &
                               lo_progressbar_init, lo_progressbar, lo_planck, lo_trapezoid_integration, open_file, &
-                              lo_flattentensor, lo_sqnorm, lo_linspace, lo_mean, lo_clean_fractional_coordinates
+                              lo_flattentensor, lo_sqnorm, lo_linspace, lo_mean, lo_clean_fractional_coordinates, &
+                              lo_harmonic_oscillator_free_energy, lo_classical_harmonic_oscillator_free_energy
+                    
     use mpi_wrappers, only: lo_mpi_helper, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_DOUBLE_COMPLEX, MPI_IN_PLACE
     use lo_memtracker, only: lo_mem_helper
     use type_crystalstructure, only: lo_crystalstructure
@@ -20,6 +22,30 @@ module energy
     
     contains
     
+    !> Calculates mode resolved harmonic free energy
+    subroutine phonon_free_energy_mode_resolved(dr, qp, tempearture, quantum, f_ph_mode)
+
+        integer :: i, j
+        real(r8), dimension(dr%n_mode, qp%n_irr_point), intent(out), allocatable :: f_ph_mode
+
+        f_ph_mode = 0.0_r8
+
+        if (quantum) then
+            do i = 1, dr%n_irr_point
+                do j = 1, dr%n_mode
+                    f_ph_mode(j, i) = qp%ip(i)%integration_weight * lo_harmonic_oscillator_free_energy(temperature, dr%iq(i)%omega(j))
+                end do
+            end do
+        else
+            do i = 1, dr%n_irr_point
+                do j = 1, dr%n_mode
+                    f_ph_mode(j, i) = qp%ip(i)%integration_weight * lo_classical_harmonic_oscillator_free_energy(temperature, dr%iq(i)%omega(j))
+                end do
+            end do
+        end if
+        f_ph_mode = f_ph_mode/dr%n_full_qpoint ! Right normalization?
+    end subroutine
+
     !> Calculates the anharmonic contributions to the free energy
     subroutine perturbative_anharmonic_free_energy(p, fct, fcf, qp, dr, temperature, free_energy_thirdorder, free_energy_fourthorder, &
                                                    fourthorder, quantum, mw, mem, verbosity, en3_out, en4_out)

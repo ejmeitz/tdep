@@ -175,6 +175,7 @@ getenergy: block
 
     ! these may or may not get allocated inside perturbative_anharmonic_free_energy
     real(r8), dimension(:, :), allocatable :: en3, en4
+    real(r8), dimension(:, :), allocatable :: f_ph_mode
 
 
     ! Some heuristics to figure out what the temperature is.
@@ -187,6 +188,7 @@ getenergy: block
     if (havehighorder) then
         select type (qp); type is (lo_fft_mesh)
             if (opts%modevalues) then
+                call phonon_free_energy_mode_resolved(dr, qp, sim%temperature_thermostat, opts%quantum, f_ph_mode)
                 call perturbative_anharmonic_free_energy(uc, fct, fcf, qp, dr, sim%temperature_thermostat, ah3, ah4, &
                                                      opts%fourthorder, opts%quantum, mw, mem, opts%verbosity + 1, en3, en4)
             else
@@ -220,6 +222,7 @@ getenergy: block
         write (*, opf) 'F_phonon =', f_ph*lo_Hartree_to_eV
         write (*, opf) 'Second order cumulant =', cumulant(2, 3)*lo_Hartree_to_eV
         write (*, opf) 'Third order cumulant =', cumulant(3, 3)*lo_Hartree_to_eV
+
         if (opts%thirdorder .or. opts%fourthorder) then
             fe3_1 = (cumulant(1, 4) + f_ph + ah3)*lo_Hartree_to_eV
             fe3_2 = (cumulant(1, 4) + f_ph + ah3 + pref*cumulant(2, 4))*lo_Hartree_to_eV
@@ -250,27 +253,41 @@ getenergy: block
             write (*, opf) 'Third order cumulant =', cumulant(3, 5)*lo_Hartree_to_eV
         end if
         if (opts%modevalues) then
-            opf2 = "(1X, 3(F25.10, ' '), I8, 1X, F12.6, 1X, I8, 1X, 25.10)"
+
+            opf2 = "(1X, 3(F25.10, ' '), I8, 1X, F12.6, 1X, 25.10)"
+            u2 = open_file('out', 'outfile.F_ph_mode_resolved')
+            write(u3, *) '# Phonon free energy (second order) for each mode'
+            write(u3, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [THz]> <F_3_n>'
+            do q1 = 1, qp%n_irr_point
+                do b1 = 1, dr%n_mode
+                    write(u2, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, &
+                                    dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
+                                    qp%ip(q1)%integration_weight*f_ph_mode(b1, q1)
+                end do
+            end do
+
+
             if (opts%thirdorder .or. opts%fourthorder) then
-                write(u, *) '# Third order anharmonic corrections for each mode'
-                write(u, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [THz]> <irred-q-point-weight> <F_3_n>'
+                u3 = open_file('out', 'outfile.delta_F3_mode_resolved')
+                write(u3, *) '# Third order anharmonic corrections for each mode'
+                write(u3, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [THz]> <F_3_n>'
                 do q1 = 1, qp%n_irr_point
                     do b1 = 1, dr%n_mode
-                        write(u, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, &
+                        write(u3, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, &
                                        dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
-                                       qp%ip(q1)%integration_weight, en3(b1, q1)
+                                       qp%ip(q1)%integration_weight*en3(b1, q1)
                     end do
                 end do
             endif
             if(opts%fourthorder) then
-                write(u, *) '# Fourth order anharmonic corrections for each mode'
-                write(u, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [THz]> <irred-q-point-weight> <F_4_n>'
+                u4 = open_file('out', 'outfile.delta_F4_mode_resolved')
+                write(u4, *) '# Fourth order anharmonic corrections for each mode'
+                write(u4, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [THz]> <F_4_n>'
                 do q1 = 1, qp%n_irr_point
                     do b1 = 1, dr%n_mode
-
-                        write(u, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, &
+                        write(u4, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, &
                                        dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
-                                       qp%ip(q1)%integration_weight, en4(b1, q1)
+                                       qp%ip(q1)%integration_weight*en4(b1, q1)
                     end do
                 end do
             endif

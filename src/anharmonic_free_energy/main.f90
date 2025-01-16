@@ -169,7 +169,7 @@ end block epotthings
 
 ! Calculate the actual free energy
 getenergy: block
-    real(r8) :: f_ph, ah3, ah4, fe2_1, fe2_2, fe3_1, fe3_2, fe4_1, fe4_2, pref
+    real(r8) :: f_ph, ah3, ah4, fe2_1, fe2_2, fe3_1, fe3_2, fe4_1, fe4_2, pref, f_ph_check
     integer :: u, b1, q1
     character(len=1000) :: opf, opf2
 
@@ -253,19 +253,22 @@ getenergy: block
             write (*, opf) 'Third order cumulant =', cumulant(3, 5)*lo_Hartree_to_eV
         end if
         if (opts%modevalues) then
-
+            f_ph_check = 0.0_r8
             opf2 = "(1X, 3(F25.10, ' '), I8, 1X, F12.6, 1X, 25.10)"
             u2 = open_file('out', 'outfile.F_ph_mode_resolved')
-            write(u3, *) '# Phonon free energy (second order) for each mode'
-            write(u3, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [THz]> <F_3_n>'
+            write(u2, *) '# Phonon free energy (second order) for each mode'
+            write(u2, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [THz]> <F_3_n>'
             do q1 = 1, qp%n_irr_point
                 do b1 = 1, dr%n_mode
                     write(u2, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, &
                                     dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
                                     qp%ip(q1)%integration_weight*f_ph_mode(b1, q1)
+                    f_ph_check = f_ph_check + qp%ip(q1)%integration_weight*f_ph_mode(b1, q1)
                 end do
             end do
-
+            f_ph_check = f_ph_check / dr%n_full_qpoint
+            write(u2, '(A, F8.2)') '# TDEP Originally Calculated F_ph as ', f_ph
+            write(u2, '(A, F8.2)') '# Modified TDEP Calculated F_ph as ', f_ph_check
 
             if (opts%thirdorder .or. opts%fourthorder) then
                 u3 = open_file('out', 'outfile.delta_F3_mode_resolved')

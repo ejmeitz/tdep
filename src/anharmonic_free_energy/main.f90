@@ -18,7 +18,7 @@ use type_phonon_dos, only: lo_phonon_dos
 
 use options, only: lo_opts
 ! use energy, only: perturbative_anharmonic_free_energy
-use energy, only: perturbative_anharmonic_free_energy
+use energy, only: perturbative_anharmonic_free_energy, phonon_free_energy_mode_resolved
 use epot, only: lo_energy_differences
 
 implicit none

@@ -25,8 +25,13 @@ module energy
     !> Calculates mode resolved harmonic free energy
     subroutine phonon_free_energy_mode_resolved(dr, qp, tempearture, quantum, f_ph_mode)
 
+        type(lo_phonon_dispersions), intent(in) :: dr
+        type(lo_fft_mesh), intent(in) :: qp
+        real(r8), intent(in) :: temperature
+        logical, intent(in) :: quantum
+
         integer :: i, j
-        real(r8), dimension(dr%n_mode, qp%n_irr_point), intent(out), allocatable :: f_ph_mode
+        real(r8), dimension(dr%n_mode, qp%n_irr_point), allocatable, intent(out) :: f_ph_mode
 
         f_ph_mode = 0.0_r8
 

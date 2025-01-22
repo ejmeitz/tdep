@@ -170,7 +170,7 @@ end block epotthings
 ! Calculate the actual free energy
 getenergy: block
     real(r8) :: f_ph, ah3, ah4, fe2_1, fe2_2, fe3_1, fe3_2, fe4_1, fe4_2, pref, f_ph_check
-    integer :: u, b1, q1
+    integer :: u, u2, u3, u4, b1, q1
     character(len=1000) :: opf, opf2
 
     ! these may or may not get allocated inside perturbative_anharmonic_free_energy

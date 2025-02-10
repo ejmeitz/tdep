@@ -31,20 +31,25 @@ module energy
         logical, intent(in) :: quantum
 
         integer :: i, j
-        real(r8), dimension(dr%n_mode, qp%n_irr_point), intent(out) :: f_ph_mode
+        real(r8), allocatable, intent(out) :: f_ph_mode(:,:)
 
+        allocate(f_ph_mode(qp%n_irr_point, dr%n_mode))
         f_ph_mode = 0.0_r8
 
+        ! dr%aq(i)%omega(j)
+        write (*, *) ''
+        write (*, *) 'CALCULATING MODE LEVEL FREE ENERGIES.'
+
         if (quantum) then
-            do i = 1, dr%n_irr_qpoint
+            do i = 1, qp%n_irr_point 
                 do j = 1, dr%n_mode
-                    f_ph_mode(j, i) = qp%ip(i)%integration_weight * lo_harmonic_oscillator_free_energy(temperature, dr%iq(i)%omega(j))
+                    f_ph_mode(i, j) = qp%ip(i)%integration_weight * lo_harmonic_oscillator_free_energy(temperature, dr%iq(i)%omega(j))
                 end do
             end do
         else
-            do i = 1, dr%n_irr_qpoint
+            do i = 1, qp%n_irr_point
                 do j = 1, dr%n_mode
-                    f_ph_mode(j, i) = qp%ip(i)%integration_weight * lo_classical_harmonic_oscillator_free_energy(temperature, dr%iq(i)%omega(j))
+                    f_ph_mode(i, j) = qp%ip(i)%integration_weight * lo_classical_harmonic_oscillator_free_energy(temperature, dr%iq(i)%omega(j))
                 end do
             end do
         end if

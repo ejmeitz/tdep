@@ -18,7 +18,7 @@ use type_phonon_dos, only: lo_phonon_dos
 
 use options, only: lo_opts
 ! use energy, only: perturbative_anharmonic_free_energy
-use energy, only: perturbative_anharmonic_free_energy, phonon_free_energy_mode_resolved
+use energy, only: perturbative_anharmonic_free_energy, unweighted_phonon_free_energy_mode_resolved
 use epot, only: lo_energy_differences
 
 implicit none
@@ -169,7 +169,7 @@ end block epotthings
 
 ! Calculate the actual free energy
 getenergy: block
-    real(r8) :: f_ph, ah3, ah4, fe2_1, fe2_2, fe3_1, fe3_2, fe4_1, fe4_2, pref, f_ph_check
+    real(r8) :: f_ph, ah3, ah4, fe2_1, fe2_2, fe3_1, fe3_2, fe4_1, fe4_2, pref, f_ph_check, f3_check, f4_check
     integer :: u, u2, u3, u4, b1, q1
     character(len=1000) :: opf, opf2
 
@@ -189,7 +189,7 @@ getenergy: block
         select type (qp); type is (lo_fft_mesh)
             if (opts%modevalues) then
                 ! allocate(f_ph_mode(qp%n_irr_point, dr%n_mode))
-                call phonon_free_energy_mode_resolved(dr, qp, sim%temperature_thermostat, opts%quantum, f_ph_mode)
+                call unweighted_phonon_free_energy_mode_resolved(dr, qp, sim%temperature_thermostat, opts%quantum, f_ph_mode)
                 call perturbative_anharmonic_free_energy(uc, fct, fcf, qp, dr, sim%temperature_thermostat, ah3, ah4, &
                                                      opts%fourthorder, opts%quantum, mw, mem, opts%verbosity + 1, en3, en4)
             else
@@ -255,45 +255,47 @@ getenergy: block
         end if
         if (opts%modevalues) then
             f_ph_check = 0.0_r8
-            opf2 = "(1X, 4(I6, 1X), F20.10, 1X, I6, 1X, F20.10)"
+            opf2 = "(1X, 6(F25.15, 1X))"
             u2 = open_file('out', 'outfile.F_ph_mode_resolved')
-            write(u2, *) '# Phonon free energy (second order) for each mode'
-            write(u2, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [THz]> <weight> <F_2_n>'
+            write(u2, *) '# Phonon free energy (second order) for each mode (summed across all branches at k-point)'
+            write(u2, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <frequency [THz]> <weight> <F_2_n>'
             do q1 = 1, qp%n_irr_point
-                do b1 = 1, dr%n_mode
-                    write(u2, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, &
-                                    dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
-                                    qp%ip(q1)%integration_weight, f_ph_mode(q1, b1)
-                    f_ph_check = f_ph_check + qp%ip(q1)%integration_weight*f_ph_mode(q1, b1)
-                end do
+                write(u2, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), &
+                                dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
+                                qp%ip(q1)%integration_weight, sum(f_ph_mode(q1, :))
+                f_ph_check = f_ph_check +  sum(f_ph_mode(q1, :))*qp%ip(q1)%integration_weight
             end do
             f_ph_check = f_ph_check / dr%n_full_qpoint
-            write(u2, '(A, F8.2)') '# TDEP Originally Calculated F_ph as ', f_ph
-            write(u2, '(A, F8.2)') '# Modified TDEP Calculated F_ph as ', f_ph_check
+            write(u2, '(A, F25.15)') '# TDEP Originally Calculated F_ph as ', f_ph
+            write(u2, '(A, F25.15)') '# Modified TDEP Calculated F_ph as ', f_ph_check
 
             if (opts%thirdorder .or. opts%fourthorder) then
                 u3 = open_file('out', 'outfile.delta_F3_mode_resolved')
-                write(u3, *) '# Third order anharmonic corrections for each mode'
-                write(u3, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [THz]> <weight> <F_3_n>'
+                write(u3, *) '# Third order anharmonic corrections for each mode (summed across all branches at k-point)'
+                write(u3, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <frequency [THz]> <weight> <F_3_n>'
                 do q1 = 1, qp%n_irr_point
-                    do b1 = 1, dr%n_mode
-                        write(u3, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, &
-                                       dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
-                                       qp%ip(q1)%integration_weight, en3(b1, q1)
-                    end do
+                    write(u3, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), &
+                                    dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
+                                    qp%ip(q1)%integration_weight, sum(en3(:, q1))
+                    f3_check = f3_check + sum(en3(:, q1))*qp%ip(q1)%integration_weight
                 end do
+                f3_check = f3_check / dr%n_full_qpoint
+                write(u2, '(A, F25.15)') '# TDEP Originally Calculated F_ph as ', ah3*lo_Hartree_to_eV
+                write(u2, '(A, F25.15)') '# Modified TDEP Calculated F_ph as ', f3_check
             endif
             if(opts%fourthorder) then
                 u4 = open_file('out', 'outfile.delta_F4_mode_resolved')
-                write(u4, *) '# Fourth order anharmonic corrections for each mode'
-                write(u4, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <branch-idx> <frequency [THz]> <weight> <F_4_n>'
+                write(u4, *) '# Fourth order anharmonic corrections for each mode (summed across all branches at k-point))'
+                write(u4, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <frequency [THz]> <weight> <F_4_n>'
                 do q1 = 1, qp%n_irr_point
-                    do b1 = 1, dr%n_mode
-                        write(u4, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), b1, &
-                                       dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
-                                       qp%ip(q1)%integration_weight, en4(b1, q1)
-                    end do
+                    write(u4, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), &
+                                    dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
+                                    qp%ip(q1)%integration_weight, sum(en4(:, q1))
+                    f4_check = f4_check + sum(en4(:, q1))*qp%ip(q1)%integration_weight
                 end do
+                f4_check = f4_check / dr%n_full_qpoint
+                write(u2, '(A, F25.15)') '# TDEP Originally Calculated F_4 as ', ah4*lo_Hartree_to_eV
+                write(u2, '(A, F25.15)') '# Modified TDEP Calculated F_4 as ', f4_check
             endif
 
             call mem%deallocate(en3, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)

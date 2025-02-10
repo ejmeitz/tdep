@@ -18,12 +18,12 @@ module energy
     implicit none
     private
     
-    public :: perturbative_anharmonic_free_energy, phonon_free_energy_mode_resolved
+    public :: perturbative_anharmonic_free_energy, unweighted_phonon_free_energy_mode_resolved
     
     contains
     
     !> Calculates mode resolved harmonic free energy
-    subroutine phonon_free_energy_mode_resolved(dr, qp, temperature, quantum, f_ph_mode)
+    subroutine unweighted_phonon_free_energy_mode_resolved(dr, qp, temperature, quantum, f_ph_mode)
 
         type(lo_phonon_dispersions), intent(in) :: dr
         type(lo_fft_mesh), intent(in) :: qp
@@ -43,13 +43,13 @@ module energy
         if (quantum) then
             do i = 1, qp%n_irr_point 
                 do j = 1, dr%n_mode
-                    f_ph_mode(i, j) = qp%ip(i)%integration_weight * lo_harmonic_oscillator_free_energy(temperature, dr%iq(i)%omega(j))
+                    f_ph_mode(i, j) = lo_harmonic_oscillator_free_energy(temperature, dr%iq(i)%omega(j))
                 end do
             end do
         else
             do i = 1, qp%n_irr_point
                 do j = 1, dr%n_mode
-                    f_ph_mode(i, j) = qp%ip(i)%integration_weight * lo_classical_harmonic_oscillator_free_energy(temperature, dr%iq(i)%omega(j))
+                    f_ph_mode(i, j) = lo_classical_harmonic_oscillator_free_energy(temperature, dr%iq(i)%omega(j))
                 end do
             end do
         end if

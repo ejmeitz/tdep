@@ -37,7 +37,7 @@ type(lo_mdsim) :: sim
 
 real(r8), dimension(3, 5) :: cumulant
 real(r8) :: timer_init, timer_total
-real(r8) :: U0, U1, energy_unit_factor
+real(r8) :: U0, U1, energy_unit_factor, n_atom_ss
 logical :: havehighorder
 
 ! Init MPI, timers and options
@@ -118,6 +118,8 @@ epotthings: block
     allocate (f3(3, ss%na))
     allocate (f4(3, ss%na))
     allocate (fp(3, ss%na))
+
+    n_atom_ss = ss%na
 
     ! Calculate the baseline energy
     allocate (ediff(sim%nt, 5))
@@ -257,45 +259,53 @@ getenergy: block
             f_ph_check = 0.0_r8
             opf2 = "(1X, 6(F25.15, 1X))"
             u2 = open_file('out', 'outfile.F_ph_mode_resolved')
-            write(u2, *) '# Phonon free energy (second order) for each mode (summed across all branches at k-point)'
+            write(u2, *) '# Phonon free energy (second order) for each mode in eV'
+            write(u2, *) '# Integration weight is by k-point not branch (i.e., sum over branches then use weight)'
             write(u2, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <frequency [THz]> <weight> <F_2_n>'
             do q1 = 1, qp%n_irr_point
-                write(u2, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), &
-                                dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
-                                qp%ip(q1)%integration_weight, sum(f_ph_mode(q1, :))
+                do b1 = 1, dr%n_mode
+                    write(u2, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), &
+                                    dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
+                                    qp%ip(q1)%integration_weight, f_ph_mode(q1, b1)*lo_Hartree_to_eV
+                end do
                 f_ph_check = f_ph_check +  sum(f_ph_mode(q1, :))*qp%ip(q1)%integration_weight
             end do
-            f_ph_check = f_ph_check / dr%n_full_qpoint
-            write(u2, '(A, F25.15)') '# TDEP Originally Calculated F_ph as ', f_ph
-            write(u2, '(A, F25.15)') '# Modified TDEP Calculated F_ph as ', f_ph_check
+            write(u2, '(A, F25.15)') '# TDEP Originally Calculated F_ph / atom as ', f_ph*lo_Hartree_to_eV
+            write(u2, '(A, F25.15)') '# Modified TDEP Calculated F_ph / atom as ', f_ph_check*lo_Hartree_to_eV ! WHY NOT DIVIDE BY NA???
 
             if (opts%thirdorder .or. opts%fourthorder) then
                 u3 = open_file('out', 'outfile.delta_F3_mode_resolved')
-                write(u3, *) '# Third order anharmonic corrections for each mode (summed across all branches at k-point)'
+                write(u3, *) '# Third order anharmonic corrections for each mode in eV'
+                write(u3, *) '# Integration weight is by k-point not branch (i.e., sum over branches then use weight)'
                 write(u3, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <frequency [THz]> <weight> <F_3_n>'
+                f3_check = 0.0_r8
                 do q1 = 1, qp%n_irr_point
-                    write(u3, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), &
-                                    dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
-                                    qp%ip(q1)%integration_weight, sum(en3(:, q1))
+                    do b1 = 1, dr%n_mode
+                        write(u3, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), &
+                                        dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
+                                        qp%ip(q1)%integration_weight, en3(b1, q1)*lo_Hartree_to_eV
+                    end do
                     f3_check = f3_check + sum(en3(:, q1))*qp%ip(q1)%integration_weight
                 end do
-                f3_check = f3_check / dr%n_full_qpoint
-                write(u2, '(A, F25.15)') '# TDEP Originally Calculated F_ph as ', ah3*lo_Hartree_to_eV
-                write(u2, '(A, F25.15)') '# Modified TDEP Calculated F_ph as ', f3_check
+                write(u3, '(A, F25.15)') '# TDEP Originally Calculated F_3 / atom as ', ah3*lo_Hartree_to_eV
+                write(u3, '(A, F25.15)') '# Modified TDEP Calculated F_3 / atom as ', f3_check*lo_Hartree_to_eV ! WHY NOT DIVIDE BY NA???
             endif
             if(opts%fourthorder) then
                 u4 = open_file('out', 'outfile.delta_F4_mode_resolved')
-                write(u4, *) '# Fourth order anharmonic corrections for each mode (summed across all branches at k-point))'
+                write(u4, *) '# Fourth order anharmonic corrections for each mode in eV'
+                write(u4, *) '# Integration weight is by k-point not branch (i.e., sum over branches then use weight)'
                 write(u4, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <frequency [THz]> <weight> <F_4_n>'
+                f4_check = 0.0_r8
                 do q1 = 1, qp%n_irr_point
-                    write(u4, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), &
-                                    dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
-                                    qp%ip(q1)%integration_weight, sum(en4(:, q1))
+                    do b1 = 1, dr%n_mode
+                        write(u4, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), &
+                                        dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
+                                        qp%ip(q1)%integration_weight, en4(b1, q1)*lo_Hartree_to_eV
+                    end do
                     f4_check = f4_check + sum(en4(:, q1))*qp%ip(q1)%integration_weight
                 end do
-                f4_check = f4_check / dr%n_full_qpoint
-                write(u2, '(A, F25.15)') '# TDEP Originally Calculated F_4 as ', ah4*lo_Hartree_to_eV
-                write(u2, '(A, F25.15)') '# Modified TDEP Calculated F_4 as ', f4_check
+                write(u4, '(A, F25.15)') '# TDEP Originally Calculated F_4 / atom as ', ah4*lo_Hartree_to_eV
+                write(u4, '(A, F25.15)') '# Modified TDEP Calculated F_4 / atom as ', f4_check*lo_Hartree_to_eV ! WHY NOT DIVIDE BY NA???
             endif
 
             call mem%deallocate(en3, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)

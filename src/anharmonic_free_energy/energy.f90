@@ -53,7 +53,7 @@ module energy
                 end do
             end do
         end if
-        f_ph_mode = f_ph_mode/dr%n_full_qpoint ! Right normalization?
+        ! f_ph_mode = f_ph_mode/dr%n_full_qpoint ! Right normalization?
     end subroutine
 
     !> Calculates the anharmonic contributions to the free energy

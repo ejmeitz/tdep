@@ -171,7 +171,7 @@ end block epotthings
 
 ! Calculate the actual free energy
 getenergy: block
-    real(r8) :: f_ph, ah3, ah4, fe2_1, fe2_2, fe3_1, fe3_2, fe4_1, fe4_2, pref, f_ph_check, f3_check, f4_check
+    real(r8) :: f_ph, ah3, ah4, fe2_1, fe2_2, fe3_1, fe3_2, fe4_1, fe4_2, pref
     integer :: u, u2, u3, u4, b1, q1
     character(len=1000) :: opf, opf2
 
@@ -256,61 +256,56 @@ getenergy: block
             write (*, opf) 'Third order cumulant =', cumulant(3, 5)*lo_Hartree_to_eV
         end if
         if (opts%modevalues) then
+            real(8) :: f_ph_check, f3_check, f4_check
+            real(8) :: f3_value, f4_value  ! Declare mode-level values
+        
             f_ph_check = 0.0_r8
-            opf2 = "(1X, 6(F25.15, 1X))"
-            u2 = open_file('out', 'outfile.F_ph_mode_resolved')
-            write(u2, *) '# Phonon free energy (second order) for each mode in eV'
+            f3_check = 0.0_r8
+            f4_check = 0.0_r8
+        
+            opf2 = "(1X, 8(F25.15, 1X))"
+            u2 = open_file('out', 'outfile.F_mode_resolved')
+        
+            write(u2, *) '# Phonon free energy mode-resolved (including third- and fourth-order corrections if available)'
             write(u2, *) '# Integration weight is by k-point not branch (i.e., sum over branches then use weight)'
-            write(u2, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <frequency [THz]> <weight> <F_2_n>'
+            write(u2, '(A, I10)') '# Number of Q-Mesh Mesh Points (Full BZ): ', dr%n_full_qpoint
+            write(u2, *) '# Columns are: <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <frequency [THz]> <weight> <F_2_n> <F_3_n> <F_4_n>'
+        
             do q1 = 1, qp%n_irr_point
                 do b1 = 1, dr%n_mode
+                    ! Initialize values to zero
+                    f3_value = 0.0_r8
+                    f4_value = 0.0_r8
+        
+                    ! Assign values if third or fourth order corrections exist
+                    if (opts%thirdorder .or. opts%fourthorder) f3_value = en3(b1, q1) * lo_Hartree_to_eV
+                    if (opts%fourthorder) f4_value = en4(b1, q1) * lo_Hartree_to_eV
+        
                     write(u2, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), &
-                                    dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
-                                    qp%ip(q1)%integration_weight, f_ph_mode(q1, b1)*lo_Hartree_to_eV
+                                    dr%iq(q1)%omega(b1) * lo_frequency_Hartree_to_THz, &
+                                    qp%ip(q1)%integration_weight, &
+                                    f_ph_mode(q1, b1) * lo_Hartree_to_eV, f3_value, f4_value
                 end do
-                f_ph_check = f_ph_check +  sum(f_ph_mode(q1, :))*qp%ip(q1)%integration_weight
+        
+                f_ph_check = f_ph_check + sum(f_ph_mode(q1, :)) * qp%ip(q1)%integration_weight
+                if (opts%thirdorder .or. opts%fourthorder) f3_check = f3_check + sum(en3(:, q1)) * qp%ip(q1)%integration_weight
+                if (opts%fourthorder) f4_check = f4_check + sum(en4(:, q1)) * qp%ip(q1)%integration_weight
             end do
-            write(u2, '(A, F25.15)') '# TDEP Originally Calculated F_ph / atom as ', f_ph*lo_Hartree_to_eV
-            write(u2, '(A, F25.15)') '# Modified TDEP Calculated F_ph / atom as ', f_ph_check*lo_Hartree_to_eV ! WHY NOT DIVIDE BY NA???
-
+        
+            write(u2, '(A, F25.15)') '# TDEP Originally Calculated F_ph / atom as ', f_ph * lo_Hartree_to_eV
+            write(u2, '(A, F25.15)') '# Modified TDEP Calculated F_ph / atom as ', f_ph_check * lo_Hartree_to_eV
             if (opts%thirdorder .or. opts%fourthorder) then
-                u3 = open_file('out', 'outfile.delta_F3_mode_resolved')
-                write(u3, *) '# Third order anharmonic corrections for each mode in eV'
-                write(u3, *) '# Integration weight is by k-point not branch (i.e., sum over branches then use weight)'
-                write(u3, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <frequency [THz]> <weight> <F_3_n>'
-                f3_check = 0.0_r8
-                do q1 = 1, qp%n_irr_point
-                    do b1 = 1, dr%n_mode
-                        write(u3, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), &
-                                        dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
-                                        qp%ip(q1)%integration_weight, en3(b1, q1)*lo_Hartree_to_eV
-                    end do
-                    f3_check = f3_check + sum(en3(:, q1))*qp%ip(q1)%integration_weight
-                end do
-                write(u3, '(A, F25.15)') '# TDEP Originally Calculated F_3 / atom as ', ah3*lo_Hartree_to_eV
-                write(u3, '(A, F25.15)') '# Modified TDEP Calculated F_3 / atom as ', f3_check*lo_Hartree_to_eV ! WHY NOT DIVIDE BY NA???
+                write(u2, '(A, F25.15)') '# TDEP Originally Calculated F_3 / atom as ', ah3 * lo_Hartree_to_eV
+                write(u2, '(A, F25.15)') '# Modified TDEP Calculated F_3 / atom as ', f3_check * lo_Hartree_to_eV
             endif
-            if(opts%fourthorder) then
-                u4 = open_file('out', 'outfile.delta_F4_mode_resolved')
-                write(u4, *) '# Fourth order anharmonic corrections for each mode in eV'
-                write(u4, *) '# Integration weight is by k-point not branch (i.e., sum over branches then use weight)'
-                write(u4, *) '# Columns are <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <frequency [THz]> <weight> <F_4_n>'
-                f4_check = 0.0_r8
-                do q1 = 1, qp%n_irr_point
-                    do b1 = 1, dr%n_mode
-                        write(u4, opf2) qp%ip(q1)%r(1), qp%ip(q1)%r(2), qp%ip(q1)%r(3), &
-                                        dr%iq(q1)%omega(b1)*lo_frequency_Hartree_to_THz, &
-                                        qp%ip(q1)%integration_weight, en4(b1, q1)*lo_Hartree_to_eV
-                    end do
-                    f4_check = f4_check + sum(en4(:, q1))*qp%ip(q1)%integration_weight
-                end do
-                write(u4, '(A, F25.15)') '# TDEP Originally Calculated F_4 / atom as ', ah4*lo_Hartree_to_eV
-                write(u4, '(A, F25.15)') '# Modified TDEP Calculated F_4 / atom as ', f4_check*lo_Hartree_to_eV ! WHY NOT DIVIDE BY NA???
+            if (opts%fourthorder) then
+                write(u2, '(A, F25.15)') '# TDEP Originally Calculated F_4 / atom as ', ah4 * lo_Hartree_to_eV
+                write(u2, '(A, F25.15)') '# Modified TDEP Calculated F_4 / atom as ', f4_check * lo_Hartree_to_eV
             endif
 
             call mem%deallocate(en3, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
             call mem%deallocate(en4, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
-        end if
+        endif
     end if
 
 end block getenergy

@@ -171,9 +171,9 @@ end block epotthings
 
 ! Calculate the actual free energy
 getenergy: block
-    real(r8) :: f_ph, ah3, ah4, fe2_1, fe2_2, fe3_1, fe3_2, fe4_1, fe4_2, pref
+    real(r8) :: f_ph, ah3, ah4, fe2_1, fe2_2, fe3_1, fe3_2, fe4_1, fe4_2, pref, f_ph_check, f3_check, f4_check, f3_value, f4_value
     integer :: u, u2, u3, u4, b1, q1
-    character(len=1000) :: opf, opf2
+    character(len=1000) :: opf, opf2 
 
     ! these may or may not get allocated inside perturbative_anharmonic_free_energy
     real(r8), dimension(:, :), allocatable :: en3, en4
@@ -255,10 +255,7 @@ getenergy: block
             write (*, opf) 'Second order cumulant =', cumulant(2, 5)*lo_Hartree_to_eV
             write (*, opf) 'Third order cumulant =', cumulant(3, 5)*lo_Hartree_to_eV
         end if
-        if (opts%modevalues) then
-            real(8) :: f_ph_check, f3_check, f4_check
-            real(8) :: f3_value, f4_value  ! Declare mode-level values
-        
+        if (opts%modevalues) then        
             f_ph_check = 0.0_r8
             f3_check = 0.0_r8
             f4_check = 0.0_r8

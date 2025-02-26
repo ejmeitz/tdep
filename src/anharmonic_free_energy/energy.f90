@@ -53,6 +53,7 @@ module energy
                 end do
             end do
         end if
+        f_ph_mode = f_ph_mode/(dr%n_mode/3)
         ! f_ph_mode = f_ph_mode/dr%n_full_qpoint ! Right normalization?
     end subroutine
 

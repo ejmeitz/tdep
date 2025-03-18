@@ -278,6 +278,7 @@ if (opts%grid) then
         ! Store the calculated spectral function to file
         if (mw%r .eq. mw%n - 1) then
             call sf%write_to_hdf5('outfile.grid_spectral_function.hdf5')
+            call dr%write_irreducible_to_hdf5(qp, uc, 'outfile.grid_dispersions_irreducible.hdf5', mem)
             ! Destroy sf here!
         end if
 

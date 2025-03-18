@@ -1,0 +1,2 @@
+#define gitbranch '@GIT_BRANCH@'
+#define gitrevision '@GIT_REVISION@'

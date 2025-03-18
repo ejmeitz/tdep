@@ -1,0 +1,284 @@
+# Set module output directory
+set(CMAKE_Fortran_MODULE_DIRECTORY ${TDEP_INC_DIR}/libolle)
+
+# Ensure position-independent code for shared libraries
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# Copy git information file
+file(COPY ${CMAKE_BINARY_DIR}/gitinformation DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Define source file groups
+file(GLOB CORE_SOURCES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90
+    ${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat*.f90
+)
+
+file(GLOB UTILITY_SOURCES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/lo_*.f90
+    ${CMAKE_CURRENT_SOURCE_DIR}/quadratures_stencils.f90
+    ${CMAKE_CURRENT_SOURCE_DIR}/quadratic_programming*.f90
+    ${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions*.f90
+)
+
+file(GLOB IO_SOURCES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/dump_data.f90
+    ${CMAKE_CURRENT_SOURCE_DIR}/*_wrappers.f90
+)
+
+file(GLOB TYPE_SOURCES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/type_*.f90
+)
+
+file(GLOB IFC_SOLVERS 
+    ${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers*.f90
+)
+
+# Combine all source files
+set(OLLE_SOURCES 
+    ${CORE_SOURCES}
+    ${UTILITY_SOURCES}
+    ${IO_SOURCES}
+    ${TYPE_SOURCES}
+    ${IFC_SOLVERS}
+)
+
+# Create the library
+add_library(olle SHARED ${OLLE_SOURCES})
+
+# Set library properties
+set_target_properties(olle PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+    OUTPUT_NAME "olle"
+    LIBRARY_OUTPUT_DIRECTORY ${TDEP_LIB_DIR}
+    ARCHIVE_OUTPUT_DIRECTORY ${TDEP_LIB_DIR}
+    POSITION_INDEPENDENT_CODE ON
+)
+
+# Add explicit -fPIC flag for Fortran compiler
+target_compile_options(olle PRIVATE -fPIC)
+
+# Set special compilation flags for certain files
+set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat_linalg.f90
+    ${CMAKE_CURRENT_SOURCE_DIR}/glmnet_wrappers.f90
+    ${CMAKE_CURRENT_SOURCE_DIR}/quadratic_programming_slvr.f90
+    PROPERTIES COMPILE_FLAGS "${CMAKE_Fortran_FLAGS}"
+)
+
+set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/type_linkedlist.f90
+    ${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions_slicingroutines.f90
+    ${CMAKE_CURRENT_SOURCE_DIR}/type_voronoi.f90
+    ${CMAKE_CURRENT_SOURCE_DIR}/type_symmetrylist_unique.f90
+    ${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh_io.f90
+    ${CMAKE_CURRENT_SOURCE_DIR}/hdf5_wrappers.f90
+    PROPERTIES COMPILE_FLAGS "${CMAKE_Fortran_FLAGS_DEBUG}"
+)
+
+# ---------------------------------------------------------------
+# Comprehensive module dependencies based on the original Makefile
+# ---------------------------------------------------------------
+
+# Basic module dependencies
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/lo_memtracker.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90")
+    
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/lo_timetracker.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/mpi_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90")
+    
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/lo_sorting.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/lo_memtracker.f90")
+    
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/lo_voronoi.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/lo_memtracker.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_distancetable.f90;${CMAKE_CURRENT_SOURCE_DIR}/mpi_wrappers.f90")
+    
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90")
+
+# Tensor and linalg dependencies
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat_tensors.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat_sorting.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat_linalg.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat_calculus.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat_physics.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat_boxes.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90")
+
+# More dependencies from the Makefile
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/mpi_wrappers.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/lo_randomnumbers.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/lo_brents_method.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/lo_distribute_and_classify_things.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/mpi_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/lo_memtracker.f90;${CMAKE_CURRENT_SOURCE_DIR}/lo_sorting.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90")
+
+# Type-related dependencies
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_equation_of_state.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/quadratures_stencils.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_blas_lapack_wrappers.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_distancetable.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_blas_lapack_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90;${CMAKE_CURRENT_SOURCE_DIR}/mpi_wrappers.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_blas_lapack_wrappers.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions_slicingroutines.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90;${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions_objectprocedures.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90;${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions_generatingfunctions.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90;${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/quadratic_programming.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/mpi_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_blas_lapack_wrappers.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/quadratic_programming_slvr.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/quadratic_programming.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_blas_lapack_wrappers.f90")
+
+# Crystal structure dependencies
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_symmetryoperation.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_voronoi.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_distancetable.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_linkedlist.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_linkedlist.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_voronoi_distancetable.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_distancetable.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_voronoi.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_graph_distancetable.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_voronoi.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_distancetable.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_voronoi.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_distancetable.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_symmetryoperation.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure_atomdata.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure_io.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/hdf5_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure_symmetry.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure_alloy.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure.f90")
+
+# Force constant dependencies
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_forceconstant_firstorder.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_forceconstant_firstorder_io.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/type_forceconstant_firstorder.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_forceconstant_secondorder.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/mpi_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/lo_memtracker.f90;${CMAKE_CURRENT_SOURCE_DIR}/lo_longrange_electrostatics.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh.f90")
+
+# qpointmesh dependencies
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/mpi_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/lo_memtracker.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_symmetryoperation.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh_wedgegeneration.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cgal_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/lo_sorting.f90;${CMAKE_CURRENT_SOURCE_DIR}/lo_verletboxes.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh_gridgeneration.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh_integrationweights.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/lo_voronoi.f90;${CMAKE_CURRENT_SOURCE_DIR}/lo_sorting.f90;${CMAKE_CURRENT_SOURCE_DIR}/lo_verletboxes.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_distancetable.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh_bandstructure.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/lo_sorting.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh_commensurate.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh_io.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/hdf5_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh.f90")
+
+# IFC solver dependencies
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/konstanter.f90;${CMAKE_CURRENT_SOURCE_DIR}/gottochblandat.f90;${CMAKE_CURRENT_SOURCE_DIR}/geometryfunctions.f90;${CMAKE_CURRENT_SOURCE_DIR}/mpi_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/hdf5_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/glmnet_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/quadratic_programming.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_crystalstructure.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_symmetryoperation.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_qpointmesh.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_forceconstant_firstorder.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_forceconstant_secondorder.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_forceconstant_thirdorder.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_forceconstant_fourthorder.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_forcemap.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_mdsim.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_distancetable.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_blas_lapack_wrappers.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers_trainpred.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers_putget.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers_prepsolver.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers_lsq.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers_diel.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers.f90;${CMAKE_CURRENT_SOURCE_DIR}/type_blas_lapack_wrappers.f90;${CMAKE_CURRENT_SOURCE_DIR}/lo_longrange_electrostatics.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers_diagnostics.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers.f90")
+
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers_fastugly.f90 
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ifc_solvers.f90")
+
+# Force sequential compilation to ensure correct module dependencies
+set_property(TARGET olle PROPERTY JOB_POOL_COMPILE sequential_pool)
+set_property(GLOBAL PROPERTY JOB_POOLS sequential_pool=1)
+
+# Link dependencies
+target_link_libraries(olle PUBLIC
+    ${LAPACK_LIBRARIES}
+    ${HDF5_FORTRAN_LIBRARIES}
+    ${HDF5_LIBRARIES}
+    ${FFTW3_LIBRARIES}
+    MPI::MPI_Fortran
+)
+
+if(USE_CGAL)
+    target_link_libraries(olle PUBLIC CGAL::CGAL)
+endif()
+
+# Include directories
+target_include_directories(olle PUBLIC
+    ${HDF5_INCLUDE_DIRS}
+    ${FFTW3_INCLUDE_DIRS}
+    ${MPI_Fortran_INCLUDE_PATH}
+)
+
+# Compiler definitions
+target_compile_definitions(olle PRIVATE ${PRECOMPILER_FLAGS})
+
+# Install targets
+install(TARGETS olle
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+# Create symbolic link to precompilerdefinitions
+execute_process(
+    COMMAND ${CMAKE_COMMAND} -E create_symlink 
+    ${CMAKE_CURRENT_SOURCE_DIR}/precompilerdefinitions
+    ${TDEP_INC_DIR}/libolle/precompilerdefinitions
+)

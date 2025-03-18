@@ -1,0 +1,6 @@
+MANPATH=$MANPATH:@CMAKE_INSTALL_PREFIX@/man
+PATH=$PATH:@CMAKE_INSTALL_PREFIX@/bin
+TDEP_BIN_DIR=@CMAKE_INSTALL_PREFIX@/bin
+export MANPATH
+export PATH
+alias gnuplot='gnuplot -persist'

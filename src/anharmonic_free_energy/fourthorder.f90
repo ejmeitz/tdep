@@ -61,10 +61,18 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, q
     call mem%allocate(egv1, dr%n_mode, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%allocate(egv2, dr%n_mode, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
 
+    ptf = 0.0_r8
+    evp1 = 0.0_r8
+    evp2 = 0.0_r8
+    evp3 = 0.0_r8
+    egv1 = 0.0_r8
+    egv2 = 0.0_r8
+
     t0 = walltime()
 
     df4 = 0.0_r8
     cv4 = 0.0_r8
+    s4 = 0.0_r8
 
     do q1=1, qp%n_irr_point
     do q2=1, qp%n_full_point
@@ -123,7 +131,7 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, q
                 ! And we accumulate
                 df4 = df4 + f0 * psisq * prefactor
                 s4 = s4 - df0 * psisq * prefactor
-                cv4 = cv4 - df0 * psisq * prefactor
+                cv4 = cv4 - ddf0 * psisq * prefactor
             end do
         end do
     end do

@@ -267,11 +267,13 @@ latdyn4ph: block
         thermo%u4 = (fe4 + opts%temperature * s4)
         thermo%cv4 = cv4
 
-        call free_energy_fourthorder_secondorder(uc, fcf, qp, dr, opts%temperature, fe4, s4, cv4, opts%quantum, mw, mem)
-        thermo%f4 = thermo%f4 + fe4
-        thermo%s4 = thermo%s4 + s4
-        thermo%u4 = thermo%u4 + (fe4 + opts%temperature * s4)
-        thermo%cv4 = thermo%cv4 + cv4
+        if (opts%fourth_order_cumulant) then
+            call free_energy_fourthorder_secondorder(uc, fcf, qp, dr, opts%temperature, fe4, s4, cv4, opts%quantum, mw, mem)
+            thermo%f4 = thermo%f4 + fe4
+            thermo%s4 = thermo%s4 + s4
+            thermo%u4 = thermo%u4 + (fe4 + opts%temperature * s4)
+            thermo%cv4 = thermo%cv4 + cv4
+        end if
     end if
     call tmr%tock('four-phonon')
 
@@ -377,6 +379,18 @@ summary: block
             write(*, opfc) 'Free energy [eV/at]', 'Internal energy [eV/at]', 'Entropy [kB]', 'Heat capacity [kB]'
             write(*, opff) fharm + f3_1, uharm+u3_1, sharm+s3_1, charm+c3_1
             write(*, opff) vf3_1, vu3_1, vs3_1, vc3_1
+        end if
+
+        if (opts%thirdorder .and. (.not. opts%fourthorder)) then
+            write(*, *) ''
+            write(*, *) 'Heat capacity with no cumulant corrections'
+            write(*, '(3(1X,A24))') 'Harmonic [kB]', 'Third Order Part [kB]', 'Total [kB]'
+            write(*, '(3(1X,F24.12))') charm, (thermo%cv3 / lo_kb_Hartree), charm + (thermo%cv3 / lo_kb_Hartree)
+        else if(opts%thirdorder .and. opts%fourthorder) then
+            write(*, *) ''
+            write(*, *) 'Heat capacity with no cumulant corrections'
+            write(*, '(4(1X,A24))') 'Harmonic [kB]', 'Third Order Part [kB]', 'Fourth Order Part [kB]', 'Total [kB]'
+            write(*, '(4(1X,F24.12))') charm, (thermo%cv3 / lo_kb_Hartree), (thermo%cv4  / lo_kb_Hartree), charm + (thermo%cv3 / lo_kb_Hartree) + (thermo%cv4  / lo_kb_Hartree)
         end if
 
 

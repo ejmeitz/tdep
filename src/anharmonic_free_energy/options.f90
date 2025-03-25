@@ -18,6 +18,7 @@ type lo_opts
     logical :: stochastic = .false.
     logical :: thirdorder = .false.
     logical :: fourthorder = .false.
+    logical :: fourth_order_cumulant = .false.
 contains
     procedure :: parse
 end type
@@ -78,6 +79,10 @@ subroutine parse(opts)
                  help='Number of blocks used to compute uncertainty', &
                  required=.false., act='store', def='10', error=lo_status)
     if (lo_status .ne. 0) stop
+    call cli%add(switch='--fourth_order_cumulant', &
+                 help='Compute second-order cumulant correction for the fourth order correction term in the free energy', &
+                 required=.false., act='store_true', def='.false.', error=lo_status)
+    if (lo_status .ne. 0) stop
     cli_manpage
     cli_verbose
 
@@ -107,6 +112,7 @@ subroutine parse(opts)
     call cli%get(switch='--qpoint_grid3ph', val=opts%qg3ph, error=lo_status); errctr = errctr + lo_status
     call cli%get(switch='--qpoint_grid4ph', val=opts%qg4ph, error=lo_status); errctr = errctr + lo_status
     call cli%get(switch='--nblocks', val=opts%nblocks, error=lo_status); errctr = errctr + lo_status
+    call cli%get(switch='--fourth_order_cumulant', val=opts%fourth_order_cumulant, error=lo_status); errctr = errctr + lo_status
 
     ! If we have fourthorder we should also have thirdorder
 !   if (opts%fourthorder) opts%thirdorder = .true.

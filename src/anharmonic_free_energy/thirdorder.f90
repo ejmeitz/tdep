@@ -200,6 +200,13 @@ subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, qu
     call mem%allocate(egv3, dr%n_mode, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%allocate(sigsq, [qp%n_irr_point, dr%n_mode], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
 
+    ptf = 0.0_r8
+    evp1 = 0.0_r8
+    evp2 = 0.0_r8
+    egv1 = 0.0_r8
+    egv3 = 0.0_r8
+    sigsq = 0.0_r8
+
     t0 = walltime()
 
     select type (qp)
@@ -210,6 +217,7 @@ subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, qu
     end select
 
     fe3 = 0.0_r8
+    s3 = 0.0_r8
     cv3 = 0.0_r8
 
     ! First we compute the broadening parameter for each modes

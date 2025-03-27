@@ -20,7 +20,7 @@ public :: free_energy_fourthorder_secondorder
 
 contains
 !> Calculate the fourth order free energy
-subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, quantum, mw, mem)
+subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, cv4_mode, quantum, mw, mem)
     !> crystal structure
     type(lo_crystalstructure), intent(in) :: uc
     !> fourth order force constant
@@ -41,7 +41,7 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, q
     type(lo_mem_helper), intent(inout) :: mem
 
     !> Frequency scaled eigenvectors
-    complex(r8), dimension(:), allocatable :: egv1, egv2, egv3, egv4
+    complex(r8), dimension(:), allocatable :: egv1, egv2
     !> Helper for Fourier transform of psi3
     complex(r8), dimension(:), allocatable :: ptf, evp1, evp2, evp3
     !> Frequencies, bose-einstein occupation and scattering strength and some other buffer
@@ -52,6 +52,8 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, q
     complex(r8) :: c0
     !> Integers for do loops and counting
     integer :: qi, q1, q2, q3, q4, b1, b2, b3, b4, i, ctr
+    !> mode resolved fourth order heat capacity
+    real(r8), dimension(:, :), allocatable, intent(out) :: cv4_mode
 
     ! We start by allocating everything
     call mem%allocate(ptf, dr%n_mode**4, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
@@ -60,6 +62,7 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, q
     call mem%allocate(evp3, dr%n_mode**4, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%allocate(egv1, dr%n_mode, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%allocate(egv2, dr%n_mode, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
+    call mem%allocate(cv4_mode, [dr%n_mode, qp%n_irr_point], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
 
     ptf = 0.0_r8
     evp1 = 0.0_r8
@@ -67,6 +70,7 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, q
     evp3 = 0.0_r8
     egv1 = 0.0_r8
     egv2 = 0.0_r8
+    cv4_mode = 0.0_r8
 
     t0 = walltime()
 
@@ -74,6 +78,7 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, q
     cv4 = 0.0_r8
     s4 = 0.0_r8
 
+    ctr = 0
     do q1=1, qp%n_irr_point
     do q2=1, qp%n_full_point
         ctr = ctr + 1
@@ -132,6 +137,7 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, q
                 df4 = df4 + f0 * psisq * prefactor
                 s4 = s4 - df0 * psisq * prefactor
                 cv4 = cv4 - ddf0 * psisq * prefactor
+                cv4_mode(b1, q1) = cv4_mode(b1, q1) - ((ddf0 * psisq * prefactor) / qp%ip(q1)%integration_weight)
             end do
         end do
     end do
@@ -147,6 +153,7 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, q
     call mw%allreduce('sum', df4)
     call mw%allreduce('sum', s4)
     call mw%allreduce('sum', cv4)
+    call mw%allreduce('sum', cv4_mode)
 
     ! And deallocate
     call mem%deallocate(ptf, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
@@ -155,6 +162,7 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, q
     call mem%deallocate(evp3, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%deallocate(egv1, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%deallocate(egv2, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
+    ! call mem%deallocate(cv4_mode, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
 
 end subroutine
 

@@ -1,6 +1,6 @@
 program anharmonic_free_energy
 !!{!src/anharmonic_free_energy/manual.md!}
-use konstanter, only: r8, lo_Hartree_to_eV, lo_kb_Hartree, lo_pressure_HartreeBohr_to_GPa, lo_tol, lo_status, lo_freqtol, lo_twopi
+use konstanter, only: r8, lo_Hartree_to_eV, lo_kb_Hartree, lo_pressure_HartreeBohr_to_GPa, lo_tol, lo_status, lo_freqtol, lo_twopi, lo_frequency_Hartree_to_THz
 use gottochblandat, only: open_file, walltime, lo_linspace, lo_progressbar_init, lo_progressbar, tochar, &
                           lo_does_file_exist, lo_mean, lo_stddev, lo_harmonic_oscillator_internal_energy, lo_chop, &
                           lo_invert_real_matrix, lo_harmonic_oscillator_cv
@@ -40,6 +40,18 @@ real(r8), dimension(3, 3, 5) :: stress_pot, stress_potvar
 real(r8) :: timer_init, timer_total
 real(r8) :: U0, U1, energy_unit_factor
 logical :: havehighorder, havesim
+
+! qp3 and qp4 must be same for mode resolved to make any sense
+!> The qpoint mesh for third-order
+class(lo_qpoint_mesh), allocatable :: qp3
+type(lo_phonon_dispersions) :: dr3
+real(r8), dimension(:, :), allocatable :: cv3_mode
+
+!> The qpoint mesh for fourth-order
+class(lo_qpoint_mesh), allocatable :: qp4
+type(lo_phonon_dispersions) :: dr4
+real(r8), dimension(:, :), allocatable :: cv4_mode
+
 
 ! Init MPI, timers and options
 call mw%init()
@@ -214,11 +226,13 @@ end block calcepot
 
 latdyn3ph: block
     !> The phonon dispersion relation
-    type(lo_phonon_dispersions) :: dr
+    ! type(lo_phonon_dispersions) :: dr
     !> The qpoint mesh
-    class(lo_qpoint_mesh), allocatable :: qp
+    ! class(lo_qpoint_mesh), allocatable :: qp
     !> The third order contribution
     real(r8) :: fe3, s3, cv3
+    !> Third order mode resolved heat capacity
+    ! real(r8), dimension(:, :), allocatable :: cv3_mode
 
 
     if (opts%thirdorder) then
@@ -228,11 +242,11 @@ latdyn3ph: block
         end if
 
         if (mw%talk) write(*, *) '... generating q-mesh'
-        call lo_generate_qmesh(qp, uc, opts%qg3ph, 'fft', timereversal=.true., headrankonly=.false., mw=mw, mem=mem, verbosity=opts%verbosity)
+        call lo_generate_qmesh(qp3, uc, opts%qg3ph, 'fft', timereversal=.true., headrankonly=.false., mw=mw, mem=mem, verbosity=opts%verbosity)
         if (mw%talk) write(*, *) '... generating harmonic dispersion'
-        call dr%generate(qp, fc, uc, mw=mw, mem=mem, verbosity=opts%verbosity)
+        call dr3%generate(qp3, fc, uc, mw=mw, mem=mem, verbosity=opts%verbosity)
 
-        call free_energy_thirdorder(uc, fct, qp, dr, opts%temperature, fe3, s3, cv3, opts%quantum, mw, mem)
+        call free_energy_thirdorder(uc, fct, qp3, dr3, opts%temperature, fe3, s3, cv3, cv3_mode, opts%quantum, mw, mem)
         thermo%f3 = fe3
         thermo%s3 = s3
         thermo%u3 = (fe3 + opts%temperature * s3)
@@ -244,11 +258,13 @@ end block latdyn3ph
 
 latdyn4ph: block
     !> The phonon dispersion relation
-    type(lo_phonon_dispersions) :: dr
+    ! type(lo_phonon_dispersions) :: dr
     !> The qpoint mesh
-    class(lo_qpoint_mesh), allocatable :: qp
-    !> The third order contribution
+    ! class(lo_qpoint_mesh), allocatable :: qp
+    !> The fourth order contribution
     real(r8) :: fe4, s4, cv4
+    !> Mode resolved fourth order contributions
+    ! real(r8), dimension(:, :), allocatable :: cv4_mode
 
     if (opts%fourthorder) then
         if (mw%talk) then
@@ -257,18 +273,18 @@ latdyn4ph: block
         end if
 
         if (mw%talk) write(*, *) '... generating q-mesh'
-        call lo_generate_qmesh(qp, uc, opts%qg4ph, 'fft', timereversal=.true., headrankonly=.false., mw=mw, mem=mem, verbosity=opts%verbosity)
+        call lo_generate_qmesh(qp4, uc, opts%qg4ph, 'fft', timereversal=.true., headrankonly=.false., mw=mw, mem=mem, verbosity=opts%verbosity)
         if (mw%talk) write(*, *) '... generating harmonic dispersion'
-        call dr%generate(qp, fc, uc, mw=mw, mem=mem, verbosity=opts%verbosity)
+        call dr4%generate(qp4, fc, uc, mw=mw, mem=mem, verbosity=opts%verbosity)
 
-        call free_energy_fourthorder(uc, fcf, qp, dr, opts%temperature, fe4, s4, cv4, opts%quantum, mw, mem)
+        call free_energy_fourthorder(uc, fcf, qp4, dr4, opts%temperature, fe4, s4, cv4, cv4_mode, opts%quantum, mw, mem)
         thermo%f4 = fe4
         thermo%s4 = s4
         thermo%u4 = (fe4 + opts%temperature * s4)
         thermo%cv4 = cv4
 
         if (opts%fourth_order_cumulant) then
-            call free_energy_fourthorder_secondorder(uc, fcf, qp, dr, opts%temperature, fe4, s4, cv4, opts%quantum, mw, mem)
+            call free_energy_fourthorder_secondorder(uc, fcf, qp4, dr4, opts%temperature, fe4, s4, cv4, opts%quantum, mw, mem)
             thermo%f4 = thermo%f4 + fe4
             thermo%s4 = thermo%s4 + s4
             thermo%u4 = thermo%u4 + (fe4 + opts%temperature * s4)
@@ -292,10 +308,14 @@ summary: block
     real(r8) :: pref
     real(r8) :: f0, f1, f2
     real(r8), dimension(3, 3) :: sigma
-    character(len=1000) :: opfc, opff, opfs
+    character(len=1000) :: opfc, opff, opfs, opf2
     !> A tolerance to clean-up stress results
     real(r8) :: stol
     integer :: i
+    integer :: u3, u4, b1, q1
+    !> Variables to re-calculate total cv from modes as a check
+    real(r8) :: cv3_check, cv4_check
+
 
     if (opts%stochastic) then
         pref = -1.0_r8
@@ -427,6 +447,52 @@ summary: block
             write(*, '(1X,F24.12)') sigma(1, 1) + sigma(2, 2) + sigma(3, 3)
         end if
     end if
+
+    if (opts%thirdorder) then        
+   
+        opf2 = "(1X, 6(F25.15, 1X))"
+        u3 = open_file('out', 'outfile.cv3_mode_resolved')
+    
+        write(u3, *) '# Third order term in heat capacity equation'
+        write(u3, *) '# Integration weight is by k-point not branch (i.e., sum over branches then use weight)'
+        write(u3, '(A, I10)') '# Number of Q-Mesh Mesh Points (Full BZ): ', dr3%n_full_qpoint
+        write(u3, *) '# Columns are: <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <frequency [THz]> <weight> <Cv_3 [kB]>'
+        
+        cv3_check = 0.0_r8
+        do q1 = 1, qp3%n_irr_point
+            do b1 = 1, dr3%n_mode
+                write(u3, opf2) qp3%ip(q1)%r(1), qp3%ip(q1)%r(2), qp3%ip(q1)%r(3), &
+                                dr3%iq(q1)%omega(b1) * lo_frequency_Hartree_to_THz, &
+                                qp3%ip(q1)%integration_weight, cv3_mode(b1, q1) / lo_kb_Hartree
+            end do
+            cv3_check = cv3_check + (sum(cv3_mode(:,q1)) * qp3%ip(q1)%integration_weight)
+        end do
+        write(u3, '(A, F25.15)') "Re-calculated cv3 contribution as", cv3_check / lo_kb_Hartree
+        write(u3, '(A, F25.15)') "TDEP calculated cv3 contribution as", thermo%cv3 / lo_kb_Hartree
+    endif
+
+    if (opts%fourthorder) then        
+   
+        opf2 = "(1X, 6(F25.15, 1X))"
+        u4 = open_file('out', 'outfile.cv4_mode_resolved')
+    
+        write(u4, *) '# Fourth order term in heat capacity equation'
+        write(u4, *) '# Integration weight is by k-point not branch (i.e., sum over branches then use weight)'
+        write(u4, '(A, I10)') '# Number of Q-Mesh Mesh Points (Full BZ): ', dr4%n_full_qpoint
+        write(u4, *) '# Columns are: <irred-q-point[1]> <irred-q-point[2]> <irred-q-point[3]> <frequency [THz]> <weight> <Cv_4 [kB]>'
+        
+        cv4_check = 0.0_r8
+        do q1 = 1, qp4%n_irr_point
+            do b1 = 1, dr4%n_mode
+                write(u4, opf2) qp4%ip(q1)%r(1), qp4%ip(q1)%r(2), qp4%ip(q1)%r(3), &
+                                dr4%iq(q1)%omega(b1) * lo_frequency_Hartree_to_THz, &
+                                qp4%ip(q1)%integration_weight, cv4_mode(b1, q1) / lo_kb_Hartree
+            end do
+            cv4_check = cv4_check + (sum(cv4_mode(:,q1)) * qp4%ip(q1)%integration_weight)
+        end do
+        write(u4, '(A, F25.15)') "Re-calculated cv4 contribution as", cv4_check / lo_kb_Hartree
+        write(u4, '(A, F25.15)') "TDEP calculated cv4 contribution as", thermo%cv4 / lo_kb_Hartree
+    endif
 
     call tmr%stop()
     if (mw%talk) write(*, *) ''

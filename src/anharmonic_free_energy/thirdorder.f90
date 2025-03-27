@@ -154,7 +154,7 @@ end subroutine
 
 
 !> Calculate the third order free energy
-subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, quantum, mw, mem)
+subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, cv3_mode, quantum, mw, mem)
     !> crystal structure
     type(lo_crystalstructure), intent(in) :: uc
     !> third order force constant
@@ -190,6 +190,8 @@ subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, qu
     integer :: qi, q1, q2, q3, q2p, q3p, b1, b2, b3, i, ctr
     !> The dimension of the q-grid
     integer, dimension(3) :: dims
+    !> Mode resolved third order heat capacity
+    real(r8), dimension(:, :), allocatable, intent(out) :: cv3_mode
 
     ! We start by allocating everything
     call mem%allocate(ptf, dr%n_mode**3, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
@@ -199,13 +201,17 @@ subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, qu
     call mem%allocate(egv2, dr%n_mode, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%allocate(egv3, dr%n_mode, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%allocate(sigsq, [qp%n_irr_point, dr%n_mode], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
+    call mem%allocate(cv3_mode, [dr%n_mode, qp%n_irr_point], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
+
 
     ptf = 0.0_r8
     evp1 = 0.0_r8
     evp2 = 0.0_r8
     egv1 = 0.0_r8
+    egv2 = 0.0_r8
     egv3 = 0.0_r8
     sigsq = 0.0_r8
+    cv3_mode = 0.0_r8
 
     t0 = walltime()
 
@@ -228,6 +234,7 @@ subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, qu
         end do
     end do
 
+    ctr = 0
     do q1=1, qp%n_irr_point
     do q2=1, qp%n_full_point
         ctr = ctr + 1
@@ -235,7 +242,7 @@ subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, qu
         q3 = fft_third_grid_index(qp%ip(q1)%full_index, q2, dims)
         if (q3 .lt. q2) cycle
 
-        ! The prefactor to take into account what we are skipping
+        The prefactor to take into account what we are skipping
         if (q2 .eq. q3) then
             mult = 1.0_r8
         else
@@ -243,6 +250,7 @@ subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, qu
         end if
 
         prefactor = qp%ip(q1)%integration_weight*qp%ap(q2)%integration_weight*mult/uc%na
+ 
         ! pre-transform the matrix element
         call pretransform_phi3(fct, qp%ap(q2)%r, qp%ap(q3)%r, ptf)
 
@@ -328,6 +336,7 @@ subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, qu
                     fe3 = fe3 - f0 * psisq
                     s3 = s3 + df0 * psisq
                     cv3 = cv3 + ddf0 * psisq
+                    cv3_mode(b1, q1) = cv3_mode(b1, q1) + ((ddf0 * psisq) / qp%ip(q1)%integration_weight)
                 end do
             end do
         end do
@@ -343,6 +352,7 @@ subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, qu
     call mw%allreduce('sum', fe3)
     call mw%allreduce('sum', s3)
     call mw%allreduce('sum', cv3)
+    call mw%allreduce('sum', cv3_mode)
 
     ! And we can deallocate everything
     call mem%deallocate(ptf, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
@@ -352,6 +362,7 @@ subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, qu
     call mem%deallocate(egv2, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%deallocate(egv3, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%deallocate(sigsq, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
+    ! call mem%deallocate(cv3_mode, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
 end subroutine
 
 !> Get the Fourier transform of the third order matrix element

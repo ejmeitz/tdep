@@ -242,7 +242,7 @@ subroutine free_energy_thirdorder(uc, fct, qp, dr, temperature, fe3, s3, cv3, cv
         q3 = fft_third_grid_index(qp%ip(q1)%full_index, q2, dims)
         if (q3 .lt. q2) cycle
 
-        The prefactor to take into account what we are skipping
+        !The prefactor to take into account what we are skipping
         if (q2 .eq. q3) then
             mult = 1.0_r8
         else

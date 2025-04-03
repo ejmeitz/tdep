@@ -86,7 +86,7 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, c
 
         prefactor = qp%ip(q1)%integration_weight*qp%ap(q2)%integration_weight/uc%na
         ! pre-transform the matrix element
-        call pretransform_phi4_first(fcf, qp%ap(q1)%r, qp%ap(q2)%r, ptf)
+        call pretransform_phi4_first(fcf, qp%ip(q1)%r, qp%ap(q2)%r, ptf)
 
         do b1=1, dr%n_mode
             om1 = dr%iq(q1)%omega(b1)
@@ -127,11 +127,11 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, c
                 else
                     ! Much simpler in the classical case
                     ! Free energy
-                    f0 = (lo_kb_Hartree*temperature)**2 / (om1*om2) / 8.0_r8
+                    f0 = (lo_kb_Hartree*temperature)**2 / (om1*om2) / (8.0_r8 * 8.0_r8)
                     ! Entropy
-                    df0 = lo_kb_Hartree**2 * temperature / (om1*om2) / 4.0_r8
+                    df0 = lo_kb_Hartree**2 * temperature / (om1*om2) / (4.0_r8 * 8.0_r8)
                     ! Heat capacity
-                    ddf0 = lo_kb_Hartree**2 * temperature / (om1*om2) / 4.0_r8
+                    ddf0 = lo_kb_Hartree**2 * temperature / (om1*om2) / (4.0_r8 * 8.0_r8)
                 end if
                 ! And we accumulate
                 df4 = df4 + f0 * psisq * prefactor

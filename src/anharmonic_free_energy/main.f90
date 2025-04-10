@@ -1,9 +1,14 @@
 program anharmonic_free_energy
 !!{!src/anharmonic_free_energy/manual.md!}
+<<<<<<< HEAD
 use konstanter, only: r8, lo_Hartree_to_eV, lo_kb_Hartree, lo_pressure_HartreeBohr_to_GPa, lo_tol, lo_status, lo_freqtol, lo_twopi, lo_frequency_Hartree_to_THz
+=======
+use konstanter, only: r8, lo_Hartree_to_eV, lo_kb_Hartree, lo_pressure_HartreeBohr_to_GPa, lo_tol, lo_status, lo_freqtol, &
+lo_twopi, lo_time_au_to_fs
+>>>>>>> 7084f1ab49554fdff4118e75ab7eb52bcce6c27f
 use gottochblandat, only: open_file, walltime, lo_linspace, lo_progressbar_init, lo_progressbar, tochar, &
                           lo_does_file_exist, lo_mean, lo_stddev, lo_harmonic_oscillator_internal_energy, lo_chop, &
-                          lo_invert_real_matrix, lo_harmonic_oscillator_cv
+                          lo_invert_real_matrix, lo_harmonic_oscillator_cv, tochar
 use mpi_wrappers, only: lo_mpi_helper
 use lo_memtracker, only: lo_mem_helper
 use lo_timetracker, only: lo_timer
@@ -203,6 +208,14 @@ calcepot: block
         call sim%read_from_file(verbosity=-1, stride=1, magnetic=.false., dielectric=.false., nrand=-1, mw=mw)
     end if
 
+    ! Let's recap info on the simulation
+    if (mw%talk) then
+            write (*, *) '... short summary of simulation:'
+            write (*, *) '                      number of atoms: ', tochar(sim%na)
+            write (*, *) '             number of configurations: ', tochar(sim%nt)
+            write (*, *) '                thermostat set to (K): ', tochar(sim%temperature_thermostat)
+    end if
+
     if (abs(opts%temperature - sim%temperature_thermostat) .gt. lo_tol .and. mw%talk) then
         write(*, *)
         write(*, *) 'WARNING: input and simulation temperatures do not match'
@@ -212,7 +225,7 @@ calcepot: block
         write(*, *)
     end if
 
-    call pot%compute_realspace_thermo(ss, sim, thermo, opts%nblocks, mw)
+    call pot%compute_realspace_thermo(ss, sim, thermo, opts%nblocks, mw, mem)
 
     call tmr%tock('simulation')
     else
@@ -283,6 +296,7 @@ latdyn4ph: block
         thermo%u4 = (fe4 + opts%temperature * s4)
         thermo%cv4 = cv4
 
+<<<<<<< HEAD
         if (opts%fourth_order_cumulant) then
             call free_energy_fourthorder_secondorder(uc, fcf, qp4, dr4, opts%temperature, fe4, s4, cv4, opts%quantum, mw, mem)
             thermo%f4 = thermo%f4 + fe4
@@ -290,12 +304,28 @@ latdyn4ph: block
             thermo%u4 = thermo%u4 + (fe4 + opts%temperature * s4)
             thermo%cv4 = thermo%cv4 + cv4
         end if
+=======
+        ! TODO set fourthorder, second order cumulant its  own qpoint grid density
+!       call free_energy_fourthorder_secondorder(uc, fcf, qp, dr, opts%temperature, fe4, s4, cv4, opts%quantum, mw, mem)
+!       thermo%f4 = thermo%f4 + fe4
+!       thermo%s4 = thermo%s4 + s4
+!       thermo%u4 = thermo%u4 + (fe4 + opts%temperature * s4)
+!       thermo%cv4 = thermo%cv4 + cv4
+>>>>>>> 7084f1ab49554fdff4118e75ab7eb52bcce6c27f
     end if
     call tmr%tock('four-phonon')
 
 end block latdyn4ph
 
 summary: block
+    !> The thermodynamic properties
+    real(r8), dimension(3, 4) :: fe, s, u, cv
+    !> The second order cumulants
+    real(r8), dimension(3, 4) :: fe2, s2, u2, cv2
+    !> And their uncertainty
+    real(r8), dimension(3, 4) :: fe_unc, s_unc, u_unc, cv_unc
+    !> The thermodynamic properties
+    real(r8), dimension(3, 4) :: corr, corr_s, corr_cv
     !> Properties at the harmonic level
     real(r8) :: fharm, uharm, sharm, charm
     !> Properties with first order cumulant, 2nd order IFC
@@ -334,37 +364,37 @@ summary: block
     call lo_symmetrize_stress(thermo%stress_diffvar, uc)
     thermo%stress_diffvar = lo_chop(thermo%stress_diffvar, stol)
 
-    fharm = thermo%f0 * lo_Hartree_to_eV
-    uharm = thermo%u0 * lo_Hartree_to_eV
-    sharm = thermo%s0 / lo_kB_Hartree
-    charm = thermo%cv0 / lo_kB_Hartree
+    ! The harmonic values
+    fharm = thermo%f0
+    uharm = thermo%u0
+    sharm = thermo%s0
+    charm = thermo%cv0
+    ! This are all the values with the corrections
+    fe(1, :) = fharm + thermo%corr_fe(1, :)
+    s(1, :) = sharm + thermo%corr_s(1, :)
+    u(1, :) = uharm + thermo%corr_u(1, :)
+    cv(1, :) = charm + thermo%corr_cv(1, :)
+    ! And the second order cumulants
+    fe(2, :) = fharm + thermo%corr_fe(1, :) + pref * thermo%corr_fe(2, :)
+    s(2, :) = sharm + thermo%corr_s(1, :) + pref * thermo%corr_s(2, :)
+    u(2, :) = uharm + thermo%corr_u(1, :) + pref * thermo%corr_u(2, :)
+    cv(2, :) = charm + thermo%corr_cv(1, :) + pref * thermo%corr_cv(2, :)
 
-    f2_1 = thermo%clt_ifc2_1(1) * lo_Hartree_to_eV
-    u2_1 = thermo%clt_ifc2_1(1) * lo_Hartree_to_eV
-    s2_1 = 0.0_r8
-    c2_1 = pref * thermo%cv_ifc2_1(1) / lo_kB_Hartree
-    vf2_1 = pref * thermo%clt_ifc2_1(2) * lo_Hartree_to_eV
-    vu2_1 = pref * thermo%clt_ifc2_1(2) * lo_Hartree_to_eV
-    vs2_1 = 0.0_r8
-    vc2_1 = pref * thermo%cv_ifc2_1(2) / lo_kb_Hartree
+    ! And now we add the other little corrections
+    fe(2, 3) = fe(2, 3) + thermo%f3
+    s(2, 3) = s(2, 3) + thermo%s3
+    u(2, 3) = u(2, 3) + thermo%u3
+    cv(2, 3) = cv(2, 3) + thermo%s3
 
-    f2_2 = thermo%clt_ifc2_2(1) * lo_Hartree_to_eV
-    u2_2 = thermo%clt_ifc2_2(1) * lo_Hartree_to_eV
-    s2_2 = 0.0_r8
-    c2_2 = 0.0_r8
-    vf2_2 = pref * thermo%clt_ifc2_2(2) * lo_Hartree_to_eV
-    vu2_2 = pref * thermo%clt_ifc2_2(2) * lo_Hartree_to_eV
-    vs2_2 = 0.0_r8
-    vc2_2 = 0.0_r8
-
-    f3_1 = thermo%clt_ifc3_1(1) * lo_Hartree_to_eV
-    u3_1 = thermo%clt_ifc3_1(1) * lo_Hartree_to_eV
-    s3_1 = 0.0_r8
-    c3_1 = 0.0_r8
-    vf3_1 = pref * thermo%clt_ifc3_1(2) * lo_Hartree_to_eV
-    vu3_1 = pref * thermo%clt_ifc3_1(2) * lo_Hartree_to_eV
-    vs3_1 = 0.0_r8
-    vc3_1 = 0.0_r8
+    ! And nice units for display
+    fharm = fharm * lo_Hartree_to_eV
+    uharm = uharm * lo_Hartree_to_eV
+    sharm = sharm / lo_kb_Hartree
+    charm = charm / lo_kb_Hartree
+    fe = fe * lo_Hartree_to_eV
+    u = u * lo_Hartree_to_eV
+    s = s / lo_kb_Hartree
+    cv = cv / lo_kb_Hartree
 
     if (mw%talk) then
         opfc = '(4(1X,A24))'
@@ -380,7 +410,7 @@ summary: block
         write(*, *) ''
         write(*, *) 'Gibbs-Bogoliubov approximation: F = F_harm + <V-V_harm>'
         write(*, opfc) 'Free energy [eV/at]', 'Internal energy [eV/at]', 'Entropy [kB]', 'Heat capacity [kB]'
-        write(*, opff) fharm + f2_1, uharm+u2_1, sharm+s2_1, charm+c2_1
+        write(*, opff) fe(1, 2), u(1, 2), s(1, 2), cv(1, 2)
         write(*, opff) vf2_1, vu2_1, vs2_1, vc2_1
 
         write(*, *) ''
@@ -390,14 +420,19 @@ summary: block
             write(*, *) 'With second order cumulant correction: F = F_harm + <V-V_harm> + <(V-V_harm)^2> / 2kBT'
         end if
         write(*, opfc) 'Free energy [eV/at]', 'Internal energy [eV/at]', 'Entropy [kB]', 'Heat capacity [kB]'
-        write(*, opff) fharm+f2_1+f2_2, uharm+u2_1+u2_2, sharm+s2_1+s2_2, charm+c2_1+c2_2
+        write(*, opff) fe(2, 2), u(2, 2), s(2, 2), cv(2, 2)
         write(*, opff) vf2_1+vf2_2, vu2_1+vu2_2, vs2_1+vs2_2, vc2_1+vc2_2
 
         if (opts%thirdorder) then
             write(*, *) ''
             write(*, *) 'With first order cumulant correction, 2nd+3rd order IFC'
             write(*, opfc) 'Free energy [eV/at]', 'Internal energy [eV/at]', 'Entropy [kB]', 'Heat capacity [kB]'
-            write(*, opff) fharm + f3_1, uharm+u3_1, sharm+s3_1, charm+c3_1
+            write(*, opff) fe(1, 3), u(1, 3), s(1, 3), cv(1, 3)
+            write(*, opff) vf3_1, vu3_1, vs3_1, vc3_1
+            write(*, *) ''
+            write(*, *) 'With Second order cumulant correction, 2nd+3rd order IFC'
+            write(*, opfc) 'Free energy [eV/at]', 'Internal energy [eV/at]', 'Entropy [kB]', 'Heat capacity [kB]'
+            write(*, opff) fe(2, 3), u(2, 3), s(2, 3), cv(2, 3)
             write(*, opff) vf3_1, vu3_1, vs3_1, vc3_1
         end if
 
@@ -514,7 +549,6 @@ summary: block
     call tmr%stop()
     if (mw%talk) write(*, *) ''
     call tmr%dump(mw, 'Timings:')
-
 end block summary
 
 ! And we are done!

@@ -75,6 +75,7 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, c
     t0 = walltime()
 
     df4 = 0.0_r8
+    s4 = 0.0_r8
     cv4 = 0.0_r8
     s4 = 0.0_r8
 
@@ -162,8 +163,11 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, c
     call mem%deallocate(evp3, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%deallocate(egv1, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%deallocate(egv2, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
+<<<<<<< HEAD
     ! call mem%deallocate(cv4_mode, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
 
+=======
+>>>>>>> 7084f1ab49554fdff4118e75ab7eb52bcce6c27f
 end subroutine
 
 !> Calculate the fourth order free energy
@@ -345,8 +349,8 @@ subroutine free_energy_fourthorder_secondorder(uc, fcf, qp, dr, temperature, fe4
                             sig = sqrt(sig1 + sig2 + sig3 + sig4)
 
                             f1 = (np1*np2*np3*np4 - n(1)*n(2)*n(3)*n(4)) / real(1.0_r8/(om1+om2+om3+om4+lo_imag*sig), r8)
-                            f2 = 4.0_r8*(n(1)*np2*np3*np4 - np1*n(2)*n(3)*n(4)) * real(1.0/(-om1+om2+om3+om4 + lo_imag*sig))
-                            f3 = 3.0_r8*(n(1)*n(2)*(n(3)+n(4)+1.0_r8) - n(3)*n(4)*(n(1)+n(2)+1.0_r8))*real(1.0/(om1+om2-om3-om4 + lo_imag*sig))
+                            f2 = 4.0_r8*(n(1)*np2*np3*np4 - np1*n(2)*n(3)*n(4)) * real(1.0/(-om1+om2+om3+om4 + lo_imag*sig), r8)
+                            f3 = 3.0_r8*(n(1)*n(2)*(n(3)+n(4)+1.0_r8) - n(3)*n(4)*(n(1)+n(2)+1.0_r8))*real(1.0/(om1+om2-om3-om4 + lo_imag*sig), r8)
 
                             f0 = (f1 + f2 + f3) / 768.0_r8
                         else

@@ -120,18 +120,18 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, c
                     f0 = (2.0_r8 * n1 + 1.0_r8) * (2.0_r8 * n2 + 1.0_r8) * psisq * prefactor / 32.0_r8
                     ! The entropy
                     df0 = 2.0_r8 * dn1 * (2.0_r8 * n2 + 1.0_r8) + (2.0_r8 * n1 + 1.0_r8) * 2.0_r8 * dn2
-                    df0 = df0 * psisq * prefactor / 32.0_r8
+                    df0 = df0 / 32.0_r8
                     ddf0 = 2.0_r8 * ddn1 * (2.0_r8 * n2 + 1.0_r8) + 2.0_r8 * ddn2 * (2.0_r8 * n1 + 1.0_r8) + &
                          8.0_r8 * dn1 * dn2
-                    ddf0 = ddf0 * temperature * psisq * prefactor / 32.0_r8
+                    ddf0 = ddf0 * temperature / 32.0_r8
                 else
                     ! Much simpler in the classical case
                     ! Free energy
-                    f0 = (lo_kb_Hartree*temperature)**2 / (om1*om2) / (8.0_r8 * 8.0_r8)
+                    f0 = (lo_kb_Hartree*temperature)**2 / (om1*om2) / 8.0_r8
                     ! Entropy
-                    df0 = lo_kb_Hartree**2 * temperature / (om1*om2) / (4.0_r8 * 8.0_r8)
+                    df0 = lo_kb_Hartree**2 * temperature / (om1*om2) / 4.0_r8
                     ! Heat capacity
-                    ddf0 = lo_kb_Hartree**2 * temperature / (om1*om2) / (4.0_r8 * 8.0_r8)
+                    ddf0 = lo_kb_Hartree**2 * temperature / (om1*om2) / 4.0_r8
                 end if
                 ! And we accumulate
                 df4 = df4 + f0 * psisq * prefactor
@@ -421,7 +421,7 @@ subroutine pretransform_phi4_first(fcf, q1, q2, ptf)
         rv4 = fcf%atom(a1)%quartet(q)%lv4
 
         iqr = -dot_product(q1, rv2) + dot_product(q2, rv3) - dot_product(q2, rv4)
-        iqr = -iqr*lo_twopi
+        iqr = iqr*lo_twopi
         expiqr = cmplx(cos(iqr), sin(iqr), r8)
         do l = 1, 3
         do k = 1, 3

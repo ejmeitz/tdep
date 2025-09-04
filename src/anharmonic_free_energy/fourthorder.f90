@@ -118,6 +118,7 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, c
                     ddn1 = lo_planck_secondderiv(temperature, om1)
                     ddn2 = lo_planck_secondderiv(temperature, om2)
                     ! The free energy
+                    ! extra prefactor here???
                     f0 = (2.0_r8 * n1 + 1.0_r8) * (2.0_r8 * n2 + 1.0_r8) * psisq * prefactor / 32.0_r8
                     ! The entropy
                     df0 = 2.0_r8 * dn1 * (2.0_r8 * n2 + 1.0_r8) + (2.0_r8 * n1 + 1.0_r8) * 2.0_r8 * dn2
@@ -163,11 +164,8 @@ subroutine free_energy_fourthorder(uc, fcf, qp, dr, temperature, df4, s4, cv4, c
     call mem%deallocate(evp3, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%deallocate(egv1, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
     call mem%deallocate(egv2, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
-<<<<<<< HEAD
     ! call mem%deallocate(cv4_mode, persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
 
-=======
->>>>>>> 7084f1ab49554fdff4118e75ab7eb52bcce6c27f
 end subroutine
 
 !> Calculate the fourth order free energy

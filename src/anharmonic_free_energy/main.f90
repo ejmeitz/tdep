@@ -1,11 +1,6 @@
 program anharmonic_free_energy
 !!{!src/anharmonic_free_energy/manual.md!}
-<<<<<<< HEAD
 use konstanter, only: r8, lo_Hartree_to_eV, lo_kb_Hartree, lo_pressure_HartreeBohr_to_GPa, lo_tol, lo_status, lo_freqtol, lo_twopi, lo_frequency_Hartree_to_THz
-=======
-use konstanter, only: r8, lo_Hartree_to_eV, lo_kb_Hartree, lo_pressure_HartreeBohr_to_GPa, lo_tol, lo_status, lo_freqtol, &
-lo_twopi, lo_time_au_to_fs
->>>>>>> 7084f1ab49554fdff4118e75ab7eb52bcce6c27f
 use gottochblandat, only: open_file, walltime, lo_linspace, lo_progressbar_init, lo_progressbar, tochar, &
                           lo_does_file_exist, lo_mean, lo_stddev, lo_harmonic_oscillator_internal_energy, lo_chop, &
                           lo_invert_real_matrix, lo_harmonic_oscillator_cv, tochar
@@ -296,7 +291,6 @@ latdyn4ph: block
         thermo%u4 = (fe4 + opts%temperature * s4)
         thermo%cv4 = cv4
 
-<<<<<<< HEAD
         if (opts%fourth_order_cumulant) then
             call free_energy_fourthorder_secondorder(uc, fcf, qp4, dr4, opts%temperature, fe4, s4, cv4, opts%quantum, mw, mem)
             thermo%f4 = thermo%f4 + fe4
@@ -304,14 +298,6 @@ latdyn4ph: block
             thermo%u4 = thermo%u4 + (fe4 + opts%temperature * s4)
             thermo%cv4 = thermo%cv4 + cv4
         end if
-=======
-        ! TODO set fourthorder, second order cumulant its  own qpoint grid density
-!       call free_energy_fourthorder_secondorder(uc, fcf, qp, dr, opts%temperature, fe4, s4, cv4, opts%quantum, mw, mem)
-!       thermo%f4 = thermo%f4 + fe4
-!       thermo%s4 = thermo%s4 + s4
-!       thermo%u4 = thermo%u4 + (fe4 + opts%temperature * s4)
-!       thermo%cv4 = thermo%cv4 + cv4
->>>>>>> 7084f1ab49554fdff4118e75ab7eb52bcce6c27f
     end if
     call tmr%tock('four-phonon')
 
@@ -373,18 +359,24 @@ summary: block
     fe(1, :) = fharm + thermo%corr_fe(1, :)
     s(1, :) = sharm + thermo%corr_s(1, :)
     u(1, :) = uharm + thermo%corr_u(1, :)
-    cv(1, :) = charm + thermo%corr_cv(1, :)
+    cv(1, :) = charm + thermo%corr_cv(1, :) ! corr = dU0 / dT
     ! And the second order cumulants
     fe(2, :) = fharm + thermo%corr_fe(1, :) + pref * thermo%corr_fe(2, :)
     s(2, :) = sharm + thermo%corr_s(1, :) + pref * thermo%corr_s(2, :)
     u(2, :) = uharm + thermo%corr_u(1, :) + pref * thermo%corr_u(2, :)
     cv(2, :) = charm + thermo%corr_cv(1, :) + pref * thermo%corr_cv(2, :)
 
-    ! And now we add the other little corrections
+    ! And now we add third-order corrections
     fe(2, 3) = fe(2, 3) + thermo%f3
     s(2, 3) = s(2, 3) + thermo%s3
     u(2, 3) = u(2, 3) + thermo%u3
-    cv(2, 3) = cv(2, 3) + thermo%s3
+    cv(2, 3) = cv(2, 3) + thermo%cv3
+
+    ! Add fourth-order corrections
+    fe(2,4) = fe(2,3) + thermo%f4
+    s(2,4) = s(2,3) + thermo%s4
+    u(2,4) = u(2,3) + thermo%u4
+    cv(2,4) = cv(2,3)  + thermo%cv4
 
     ! And nice units for display
     fharm = fharm * lo_Hartree_to_eV
@@ -433,6 +425,19 @@ summary: block
             write(*, *) 'With Second order cumulant correction, 2nd+3rd order IFC'
             write(*, opfc) 'Free energy [eV/at]', 'Internal energy [eV/at]', 'Entropy [kB]', 'Heat capacity [kB]'
             write(*, opff) fe(2, 3), u(2, 3), s(2, 3), cv(2, 3)
+            write(*, opff) vf3_1, vu3_1, vs3_1, vc3_1
+        end if
+
+        if (opts%fourthorder) then
+            write(*, *) ''
+            write(*, *) 'With first order cumulant correction, 2nd+3rd+4th order IFC'
+            write(*, opfc) 'Free energy [eV/at]', 'Internal energy [eV/at]', 'Entropy [kB]', 'Heat capacity [kB]'
+            write(*, opff) fe(1, 4), u(1, 4), s(1, 4), cv(1, 4)
+            write(*, opff) vf3_1, vu3_1, vs3_1, vc3_1
+            write(*, *) ''
+            write(*, *) 'With Second order cumulant correction, 2nd+3rd+4th order IFC'
+            write(*, opfc) 'Free energy [eV/at]', 'Internal energy [eV/at]', 'Entropy [kB]', 'Heat capacity [kB]'
+            write(*, opff) fe(2, 4), u(2, 4), s(2, 4), cv(2, 4)
             write(*, opff) vf3_1, vu3_1, vs3_1, vc3_1
         end if
 

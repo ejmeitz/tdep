@@ -61,7 +61,7 @@ module lo_epot
     
         type(lo_crystalstructure) :: p
         integer :: ctr, i
-        real(r8), dimension(:, :), allocatable :: f2, f3, f4, fp
+        real(r8), dimension(:, :), allocatable :: f2, f3, f4, fp, f_tot
         real(r8) :: e2, e3, e4, ep
         real(r8), dimension(3, 3) :: m0
 
@@ -83,11 +83,12 @@ module lo_epot
         call mem%allocate(f3, [3, ss%na], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
         call mem%allocate(f4, [3, ss%na], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
         call mem%allocate(fp, [3, ss%na], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
+        call mem%allocate(f_tot, [3, ss%na], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
         f2 = 0.0_r8
         f3 = 0.0_r8
         f4 = 0.0_r8
         fp = 0.0_r8
-        f_tot = f2 + f3 + f4 + fp
+        f_tot = 0.0_r8
         
         do i = 1, nstep
 
@@ -111,6 +112,7 @@ module lo_epot
 
             if (present(sim)) then
                 m0 = 0.0_r8 ! no stress
+                f_tot = f2 + f3 + f4 + fp
                 call sim%add_timestep(p%r, f_tot, 0.0_r8, 0.0_r8, temperature, m0, atomic_numbers=p%atomic_number)
             end if
             

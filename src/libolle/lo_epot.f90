@@ -10,7 +10,7 @@ module lo_epot
     use type_forceconstant_secondorder, only: lo_forceconstant_secondorder
     use type_forceconstant_thirdorder, only: lo_forceconstant_thirdorder
     use type_forceconstant_fourthorder, only: lo_forceconstant_fourthorder
-    use type_mdsim, only: lo_mdsim, add_timestep
+    use type_mdsim, only: lo_mdsim
     implicit none
     
     private

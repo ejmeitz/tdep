@@ -46,7 +46,7 @@ init: block
 
     integer :: f, i, j, l, readrank
     logical :: readonthisrank, mpiparallel
-    real(r8) :: t0, dt
+    real(r8) :: t0
 
 
     if (.not. mw%talk) opts%verbosity = -100
@@ -108,8 +108,9 @@ init: block
         if (mw%talk) write (*, *) '... parsed simulation data'
     else
         if (opts%dumpconfigs) then
-            dt = 0.0_r8
-            sim%init_empty(uc, ss, opts%nconf, opts%temperature, dt, .false., .false.)
+            sim%init_empty(uc, ss, opts%nconf, opts%temperature, timestep=-1.0_r8, &
+                            magnetic_moments=.false., &
+                            variable_lattice=.false.)
         end if
     end if
 

@@ -14,6 +14,7 @@ type lo_opts
     integer :: stride = 1 !! TODO CURRENTLY STRIDE IS IGNORED WHEN PARSING infile.positions
     integer :: nconf = -1
     logical :: quantum = .false.
+    logical :: dumpconfigs = .false.
     real(flyt) :: temperature = -lo_huge
 contains
     procedure :: parse
@@ -71,6 +72,10 @@ subroutine parse(opts)
         help='If using --nconf, generate configurations at this temperature.', &
         required=.false., act='store', def='-1', error=lo_status)
     if (lo_status .ne. 0) stop
+    call cli%add(switch='--dumpconfigs', &
+        help='If using --nconf, dump atomic configurations to an HDF5.', &
+        required=.false., act='store_true', def='.false.', error=lo_status)
+    if (lo_status .ne. 0) stop
     cli_manpage
     cli_verbose
 
@@ -96,6 +101,7 @@ subroutine parse(opts)
     call cli%get(switch="--nconf", val = opts%nconf, error = lo_status); errctr = errctr + lo_status
     call cli%get(switch="--temperature", val = opts%temperature, error = lo_status); errctr = errctr + lo_status
     call cli%get(switch='--quantum', val = opts%quantum, error=lo_status); errctr = errctr + lo_status
+    call cli%get(switch='--dumpconfigs', val = opts%dumpconfigs, error=lo_status); errctr = errctr + lo_status
 
     if (errctr .ne. 0) call lo_stop_gracefully(['Failed parsing the command line options'], lo_exitcode_baddim)
 

@@ -11,7 +11,7 @@ use gottochblandat, only: tochar, walltime, lo_stop_gracefully, open_file, lo_pr
 use type_forceconstant_secondorder, only: lo_forceconstant_secondorder
 use type_forceconstant_thirdorder, only: lo_forceconstant_thirdorder
 use type_forceconstant_fourthorder, only: lo_forceconstant_fourthorder
-use type_mdsim, only: lo_mdsim
+use type_mdsim, only: lo_mdsim, init_empty
 
 use lo_epot, only: lo_energy_differences
 
@@ -23,6 +23,7 @@ type(lo_opts) :: opts
 type(lo_crystalstructure) :: ss, uc
 type(lo_energy_differences) :: pot
 type(lo_mdsim) :: sim
+
 
 type(lo_forceconstant_secondorder) :: fc2
 type(lo_forceconstant_thirdorder) :: fc3
@@ -62,6 +63,7 @@ init: block
             write(*, '(1X,A40,I8)') 'Num Configs                          ', opts%nconf
             write (*, '(1X,A40,L3)') 'Quantum configurations              ', opts%quantum
             write (*, '(1X,A40,F20.12)') 'Temperature                     ', opts%temperature
+            write (*, '(1X,A40,L3)') 'Dump configurations                 ', opts%dumpconfigs
         end if
     end if
 
@@ -104,6 +106,10 @@ init: block
                                      magnetic=.false., dielectric=.false., nrand=-1, mw=mw)
         end if
         if (mw%talk) write (*, *) '... parsed simulation data'
+    else
+        if (opts%dumpconfigs) then
+            sim%init_empty(uc, ss, opt%nconf, opts%temperature, 0.0_r8, .false., .false.)
+        end if
     end if
 
 end block init
@@ -124,7 +130,11 @@ energy : block
         call mem%allocate(pebuf, [opts%nconf, 4], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
         pebuf = 0.0_r8
 
-        call pot%statistical_sampling(uc, ss, fc2, opts%nconf, opts%temperature, opts%quantum, pebuf, mw, mem, opts%verbosity)
+        if (opts%dumpconfigs) then
+            call pot%statistical_sampling(uc, ss, fc2, opts%nconf, opts%temperature, opts%quantum, pebuf, mw, mem, opts%verbosity, sim)
+        else
+            call pot%statistical_sampling(uc, ss, fc2, opts%nconf, opts%temperature, opts%quantum, pebuf, mw, mem, opts%verbosity)
+        end if
 
     else
 

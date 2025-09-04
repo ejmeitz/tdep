@@ -138,6 +138,10 @@ energy : block
             call pot%statistical_sampling(uc, ss, fc2, opts%nconf, opts%temperature, opts%quantum, pebuf, mw, mem, opts%verbosity)
         end if
 
+        if (mw%talk) then
+            sim%write_to_hdf5(uc, ss, 'outfile.canonical_configs.hdf5', opts%verbosity)
+        end if
+
     else
 
         call mem%allocate(pebuf, [sim%nt, 4], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)

@@ -61,7 +61,7 @@ module lo_epot
     
         type(lo_crystalstructure) :: p
         integer :: ctr, i
-        real(r8), dimension(:, :), allocatable :: f2, f3, f4, fp, f_tot
+        real(r8), dimension(:, :), allocatable :: f2, f3, f4, fp, f_zeros
         real(r8) :: e2, e3, e4, ep
         real(r8), dimension(3, 3) :: m0
 

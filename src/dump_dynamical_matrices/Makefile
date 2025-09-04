@@ -7,7 +7,7 @@ OBJS = $(OBJECT_PATH)main.o $(OBJECT_PATH)options.o
 
 LPATH = -L../../lib $(blaslapackLPATH) $(incLPATHhdf) $(incLPATHmpi) $(incLPATHfft)
 IPATH = -I../../inc/libolle -I../../inc/libflap $(blaslapackIPATH) $(incIPATHhdf) $(incIPATHmpi) $(incIPATHfft)
-LIBS = -lolle -lflap $(blaslapackLIBS) $(incLIBShdf) $(incLIBSmpi) $(incLIBSfft)
+LIBS = ../../lib/libolle.a -lflap $(blaslapackLIBS) $(incLIBShdf) $(incLIBSmpi) $(incLIBSfft)
 
 # ok, I think I get this.
 #OPT = -O0 -fbacktrace -fcheck=all -finit-real=nan -finit-derived -fmax-errors=10
@@ -23,7 +23,7 @@ clean:
 	rm -f $(PROG) $(OBJS) *.mod $(OBJECT_PATH)*.mod
 
 
-$(OBJECT_PATH)main.o: $(OBJECT_PATH)options.o
+$(OBJECT_PATH)main.o: $(OBJECT_PATH)options.o ../../lib/libolle.a
 	$(F90) $(F90FLAGS) -c main.f90 -o $@
 $(OBJECT_PATH)options.o:
 	$(F90) $(F90FLAGS) -c options.f90 -o $@

@@ -78,6 +78,29 @@ i.e., add the respective lines to your `.bashrc` and you are all set up!
 
 **If problems occur, please look at the [Troubleshooting section below](#Troubleshooting). If you cannot fix the error, please reach out, e.g., via the [issue tracker](https://github.com/tdep-developers/tdep/issues).**
 
+## Meson build system
+
+Alternativaly to the `build_things.sh` script, there is also the possibility to use [Meson](https://mesonbuild.com/). It is a build automation tool, and  it supports incremental builds. The dependencies should be installed in standard locations (e.g. `/usr/local/`) or specified in the `PKG_CONFIG_PATH`.
+
+First setup the git version for the code: 
+```setup_git_version.sh```
+Then you can run the configuration step:
+```meson setup build```
+And finally compile the code:
+```
+cd build
+meson compile
+meson install
+```
+
+If some dependencies are not found, please make sure that they are in your PKG_CONFIG_PATH. For example, put something of the form in your `.bashrc` / `.bash_profile` :
+```export PKG_CONFIG_PATH="/path/to/your/netcdf/:${PKG_CONFIG_PATH}"```
+Depending on the method used to install the required libraries, they may not be automatically put inside the search path (Homebrew is known to not always do it).
+You can make sure that `pkg-config` is able to find the dependencies by running: `pkg-config --libs hdf5`
+Meson will first try to find dependencies via `pkg-config`. If it does not find them, it will try to use CMake (if installed/loaded).
+
+Once the configuration step is done, everything should go smoothly. The binaries will be in build/bin/executable_name.
+
 ## Check your installation
 
 We advise to run the tests in [`./tests`](./tests)  to check your installation.
@@ -162,7 +185,17 @@ Run
 ./build_things.sh --nthreads_make 4
 ```
 
-This should be it.
+The `build_things.sh` script also provides a `--install` flag which will install the TDEP binaries and library to the directory specified by the `prefix` environment variable. If no `prefix` is set but `--install` is passed to `build_things.sh` TDEP is installed to `/usr/local`.
+
+# Shared library
+
+By default TDEP will build a shared version of the libolle library which contains the core routines necessary for TDEP. Casual users should will never need to interact with this build product, but it can be useful if you want to build your own library on top of TDEP and call TDEP routines from your own code.
+
+For example,
+```bash
+export prefix="/home/myhome/tdep_install_dir"
+./build_things.sh --install
+```
 
 # Troubleshooting
 

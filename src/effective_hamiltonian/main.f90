@@ -108,7 +108,7 @@ init: block
         if (mw%talk) write (*, *) '... parsed simulation data'
     else
         if (opts%dumpconfigs) then
-            sim%init_empty(uc, ss, opt%nconf, opts%temperature, 0.0_r8, .false., .false.)
+            sim%init_empty(uc, ss, opts%nconf, opts%temperature, 0.0_r8, .false., .false.)
         end if
     end if
 

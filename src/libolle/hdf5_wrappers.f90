@@ -13,6 +13,8 @@ private
 public :: lo_hdf5_helper
 public :: lo_h5_store_attribute
 public :: lo_h5_store_data
+public :: lo_h5_append_data
+public :: lo_h5_create_empty
 public :: lo_h5_read_attribute
 public :: lo_h5_read_data
 public :: lo_h5_does_dataset_exist

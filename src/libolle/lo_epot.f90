@@ -112,10 +112,10 @@ module lo_epot
 
             if (present(sim)) then
                 sim%r(:, :, i) = p%r
-                sim%stat%polar_potential_energy = ep
-                sim%stat%secondorder_potential_energy = e2
-                sim%stat%thirdorder_potential_energy = e3
-                sim%stat%fourthorder_potential_energy = e4
+                sim%stat%polar_potential_energy(i) = ep
+                sim%stat%secondorder_potential_energy(i) = e2
+                sim%stat%thirdorder_potential_energy(i) = e3
+                sim%stat%fourthorder_potential_energy(i) = e4
 
                 ! m0 = 0.0_r8 ! no stress
                 !call sim%add_timestep(p%r, f_zeros, 0.0_r8, 0.0_r8, temperature, m0, atomic_numbers=p%atomic_number)

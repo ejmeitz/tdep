@@ -449,12 +449,12 @@ subroutine append_to_hdf5(cc, uc, ss, filename, init, total_configs, offset, ver
     ! Initialize hdf5 properly
     call h5%init(__FILE__, __LINE__)
 
-    lo_h5_append_data(filename, dataset_name, cc%r, offset)
-    lo_h5_append_data(filename, dataset_name, cc%v, offset)
-    lo_h5_append_data(filename, dataset_name, cc%stat%polar_potential_energy, offset)
-    lo_h5_append_data(filename, dataset_name, cc%stat%secondorder_potential_energy, offset)
-    lo_h5_append_data(filename, dataset_name, cc%stat%thirdorder_potential_energy, offset)
-    lo_h5_append_data(filename, dataset_name, cc%stat%fourthorder_potential_energy, offset)
+    call lo_h5_append_data(filename, dataset_name, cc%r, offset)
+    call lo_h5_append_data(filename, dataset_name, cc%v, offset)
+    call lo_h5_append_data(filename, dataset_name, cc%stat%polar_potential_energy, offset)
+    call lo_h5_append_data(filename, dataset_name, cc%stat%secondorder_potential_energy, offset)
+    call lo_h5_append_data(filename, dataset_name, cc%stat%thirdorder_potential_energy, offset)
+    call lo_h5_append_data(filename, dataset_name, cc%stat%fourthorder_potential_energy, offset)
 
     call h5%destroy(__FILE__, __LINE__)
 

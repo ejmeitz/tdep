@@ -76,6 +76,8 @@ contains
     procedure :: set_step
     !> write to hdf5
     procedure :: write_to_hdf5
+    procedure :: write_hdf5_header
+    procedure :: append_to_hdf5
 end type
 
 contains
@@ -359,5 +361,100 @@ subroutine write_to_hdf5(cc, uc, ss, filename, verbosity)
     if (verbosity .gt. 0) write (*, *) 'wrote simulation (', tochar(walltime() - timer), 's)'
 end subroutine
 
+
+subroutine write_hdf5_header(cc, uc, ss, filename, verbosity)
+    !> md simulation
+    class(lo_canonical_configs), intent(in) :: cc
+    !> unitcell
+    type(lo_crystalstructure), intent(in) :: uc
+    !> supercell
+    type(lo_crystalstructure), intent(inout) :: ss
+    !> filename
+    character(len=*), intent(in) :: filename
+    !> Talk a lot?
+    integer, intent(in) :: verbosity
+
+    type(lo_hdf5_helper) :: h5
+
+    ! Initialize hdf5 properly
+    call h5%init(__FILE__, __LINE__)
+    call h5%open_file('write', trim(filename))
+
+    call lo_h5_create_empty(cc%r, filename, 'positions', total_configs)
+    call lo_h5_create_empty(cc%v, filename, 'velocities', total_configs)
+    call lo_h5_create_empty(cc%stat%polar_potential_energy, filename, 'polar_potential_energy', total_configs)
+    call lo_h5_create_empty(cc%stat%secondorder_potential_energy, filename, 'secondorder_potential_energy', total_configs)
+    call lo_h5_create_empty(cc%stat%thirdorder_potential_energy, filename, 'thirdorder_potential_energy', total_configs)
+    call lo_h5_create_empty(cc%stat%fourthorder_potential_energy, filename, 'fourthorder_potential_energy', total_configs)
+    if (verbosity .gt. 0) write (*, *) '... created empty datasets'
+
+    ! Store some metadata. Not sure if effective.
+    call lo_h5_store_attribute(cc%na, h5%file_id, 'number_of_atoms')
+    call lo_h5_store_attribute(cc%nt, h5%file_id, 'number_of_timesteps')
+    call lo_h5_store_attribute(cc%temperature_thermostat, h5%file_id, 'temperature_thermostat')
+    call lo_h5_store_attribute(cc%alloy, h5%file_id, 'is_simulation_alloy')
+
+    ! Write some alloy things?
+    if (cc%alloy) then
+        call lo_h5_store_data(cc%atomic_numbers, h5%file_id, 'atomic_numbers', enhet='Z')
+        ! Then the alloy specification
+        call lo_h5_store_data(cc%extra%unitcell_componentcounter, h5%file_id, 'unitcell_componentcounter')
+        call lo_h5_store_data(cc%extra%supercell_componentcounter, h5%file_id, 'supercell_componentcounter')
+        call lo_h5_store_data(cc%extra%unitcell_components, h5%file_id, 'unitcell_components')
+        call lo_h5_store_data(cc%extra%supercell_components, h5%file_id, 'supercell_components')
+        call lo_h5_store_data(cc%extra%unitcell_concentrations, h5%file_id, 'unitcell_concentrations')
+        call lo_h5_store_data(cc%extra%supercell_concentrations, h5%file_id, 'supercell_concentrations')
+    end if
+
+    ! Maybe some auxiliary stuff
+    call lo_h5_store_data(uc%latticevectors*lo_bohr_to_A, h5%file_id, 'unitcell_latticevectors', enhet='A')
+    call lo_h5_store_data(ss%latticevectors*lo_bohr_to_A, h5%file_id, 'supercell_latticevectors', enhet='A')
+    call lo_h5_store_data(uc%r, h5%file_id, 'unitcell_positions', enhet='dimensionless')
+    call lo_h5_store_data(ss%r, h5%file_id, 'supercell_positions', enhet='dimensionless')
+    call lo_h5_store_data(uc%atomic_number, h5%file_id, 'unitcell_atomic_numbers', enhet='e')
+    call lo_h5_store_data(ss%atomic_number, h5%file_id, 'supercell_atomic_numbers', enhet='e')
+    if (verbosity .gt. 0) write (*, *) '... wrote energies and metadata'
+        
+    
+    call h5%close_file()
+    call h5%destroy(__FILE__, __LINE__)
+
+
+end subroutine write_hdf5_header
+
+subroutine append_to_hdf5(cc, uc, ss, filename, init, total_configs, offset, verbosity)
+    !> md simulation
+    class(lo_canonical_configs), intent(in) :: cc
+    !> unitcell
+    type(lo_crystalstructure), intent(in) :: uc
+    !> supercell
+    type(lo_crystalstructure), intent(inout) :: ss
+    !> filename
+    character(len=*), intent(in) :: filename
+    !> whether dataset has been initialized or not yet
+    logical, intent(in) :: init
+    !> total number of confings in final file
+    integer, intent(in) :: total_configs
+    !> where to append to in the file
+    integer, intent(in) :: offset
+    !> Talk a lot?
+    integer, intent(in) :: verbosity
+
+
+    type(lo_hdf5_helper) :: h5
+    
+    ! Initialize hdf5 properly
+    call h5%init(__FILE__, __LINE__)
+
+    lo_h5_append_data(filename, dataset_name, cc%r, offset)
+    lo_h5_append_data(filename, dataset_name, cc%v, offset)
+    lo_h5_append_data(filename, dataset_name, cc%stat%polar_potential_energy, offset)
+    lo_h5_append_data(filename, dataset_name, cc%stat%secondorder_potential_energy, offset)
+    lo_h5_append_data(filename, dataset_name, cc%stat%thirdorder_potential_energy, offset)
+    lo_h5_append_data(filename, dataset_name, cc%stat%fourthorder_potential_energy, offset)
+
+    call h5%destroy(__FILE__, __LINE__)
+
+end subroutine
 
 end module

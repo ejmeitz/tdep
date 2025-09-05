@@ -143,6 +143,20 @@ interface lo_h5_read_attribute
     module procedure read_float_as_attribute
 end interface
 
+!> interface for appending to data
+!> ASSUMES data is appened to last dimension
+interface lo_h5_append_data
+    module procedure append_double_1D_array_as_data
+    module procedure append_double_3D_array_as_data
+end interface
+
+!> necessary for append interface
+!> must create empty dataset in file first
+interface lo_h5_create_empty
+    module procedure create_empty_double_1D
+    module procedure create_empty_double_3D
+end interface
+
 contains
 
 !> Initialize HDF5
@@ -1061,5 +1075,224 @@ subroutine read_float_as_attribute(buf,obj_id,attribute_name,error)
     call h5aclose_f(attr_id,err)
     if ( present(error) ) error=err
 end subroutine
+
+
+subroutine append_double_1D_array_as_data(filename, dataset_name, data, offset)
+    character(len=*), intent(in) :: filename, dataset_name
+    real(flyt), intent(in) :: data(:)  ! 1D array to append
+    integer, intent(in) :: offset  ! Starting position in the array
+    
+    integer(HID_T) :: file_id, dataset_id, dataspace_id, memspace_id
+    integer(HSIZE_T) :: file_offset(1), count(1)
+    integer :: error
+    
+    ! Open file and dataset
+    call h5fopen_f(filename, H5F_ACC_RDWR_F, file_id, error)
+    if (error /= 0) then
+        write(*,*) 'Error opening file: ', trim(filename)
+        return
+    end if
+    
+    call h5dopen_f(file_id, dataset_name, dataset_id, error)
+    if (error /= 0) then
+        write(*,*) 'Error opening dataset: ', trim(dataset_name)
+        call h5fclose_f(file_id, error)
+        return
+    end if
+    
+    ! Set up hyperslab selection for writing
+    count = shape(data, kind=HSIZE_T)  ! Size of data to write
+    file_offset = [int(offset, HSIZE_T)]  ! Where to write it
+    
+    ! Select hyperslab in file dataspace
+    call h5dget_space_f(dataset_id, dataspace_id, error)
+    call h5sselect_hyperslab_f(dataspace_id, H5S_SELECT_SET_F, file_offset, count, error)
+    
+    ! Create memory dataspace
+    call h5screate_simple_f(1, count, memspace_id, error)
+    
+    ! Write data
+    call h5dwrite_f(dataset_id, H5T_NATIVE_DOUBLE, data, count, error, &
+                   memspace_id, dataspace_id)
+    
+    if (error /= 0) then
+        write(*,*) 'Error writing data to dataset: ', trim(dataset_name)
+    end if
+    
+    ! Close everything
+    call h5sclose_f(memspace_id, error)
+    call h5sclose_f(dataspace_id, error)
+    call h5dclose_f(dataset_id, error)
+    call h5fclose_f(file_id, error)
+    
+end subroutine append_double_1D_array_as_data
+subroutine create_empty_double_1D(data, filename, dataset_name, total_configs)
+    real(flyt), intent(in) :: data(:)  ! only passed for interface definition, not used
+    character(len=*), intent(in) :: filename, dataset_name
+    integer, intent(in) :: total_configs  ! Total size of the 1D dataset
+    
+    integer(HID_T) :: file_id, dataset_id, dataspace_id, plist_id
+    integer(HSIZE_T) :: dims(1), chunk_dims(1)
+    integer :: error
+    logical :: file_exists
+    
+    ! Check if file exists
+    inquire(file=filename, exist=file_exists)
+    
+    if (file_exists) then
+        call h5fopen_f(filename, H5F_ACC_RDWR_F, file_id, error)
+    else
+        call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
+    end if
+    
+    ! Dataset dimensions: (total_configs) - data size is ignored for 1D
+    dims = [int(total_configs, HSIZE_T)]
+    
+    ! Chunk for efficient appending
+    chunk_dims = [min(1000_HSIZE_T, int(total_configs, HSIZE_T))]
+    
+    ! Create dataspace
+    call h5screate_simple_f(1, dims, dataspace_id, error)
+    
+    ! Create dataset creation property list with chunking and compression
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, error)
+    
+    ! Enable chunking (required for compression)
+    call h5pset_chunk_f(plist_id, 1, chunk_dims, error)
+    
+    ! Enable gzip compression
+    call h5pset_deflate_f(plist_id, 6, error)
+    
+    ! Optional: Enable shuffle filter (reorders bytes for better compression)
+    call h5pset_shuffle_f(plist_id, error)
+    
+    ! Create dataset
+    call h5dcreate_f(file_id, dataset_name, H5T_NATIVE_DOUBLE, dataspace_id, &
+                    dataset_id, error, plist_id)
+    
+    if (error == 0) then
+        write(*,'(A,A,A,I0)') 'Created compressed dataset: ', trim(dataset_name), &
+                             ' with compression level ', 6
+    else
+        write(*,*) 'Error creating compressed dataset: ', trim(dataset_name)
+    end if
+    
+    ! Close everything
+    call h5pclose_f(plist_id, error)
+    call h5dclose_f(dataset_id, error)
+    call h5sclose_f(dataspace_id, error)
+    call h5fclose_f(file_id, error)
+    
+end subroutine create_empty_double_1D
+
+subroutine append_double_3D_array_as_data(filename, dataset_name, data, config_offset)
+    character(len=*), intent(in) :: filename, dataset_name
+    real(flyt), intent(in) :: data(:,:,:)  ! (3, N_atoms, local_configs)
+    integer, intent(in) :: config_offset  ! Starting position in the config dimension
+    
+    integer(HID_T) :: file_id, dataset_id, dataspace_id, memspace_id
+    integer(HSIZE_T) :: offset(3), count(3)
+    integer :: error
+    
+    ! Open file and dataset
+    call h5fopen_f(filename, H5F_ACC_RDWR_F, file_id, error)
+    if (error /= 0) then
+        write(*,*) 'Error opening file: ', trim(filename)
+        return
+    end if
+    
+    call h5dopen_f(file_id, dataset_name, dataset_id, error)
+    if (error /= 0) then
+        write(*,*) 'Error opening dataset: ', trim(dataset_name)
+        call h5fclose_f(file_id, error)
+        return
+    end if
+    
+    ! Set up hyperslab selection for writing
+    count = shape(data, kind=HSIZE_T)  ! Size of data to write
+    offset = [0_HSIZE_T, 0_HSIZE_T, int(config_offset, HSIZE_T)]  ! Where to write it
+    
+    ! Select hyperslab in file dataspace
+    call h5dget_space_f(dataset_id, dataspace_id, error)
+    call h5sselect_hyperslab_f(dataspace_id, H5S_SELECT_SET_F, offset, count, error)
+    
+    ! Create memory dataspace
+    call h5screate_simple_f(3, count, memspace_id, error)
+    
+    ! Write data
+    call h5dwrite_f(dataset_id, H5T_NATIVE_DOUBLE, data, count, error, &
+                   memspace_id, dataspace_id)
+    
+    if (error /= 0) then
+        write(*,*) 'Error writing data to dataset: ', trim(dataset_name)
+    end if
+    
+    ! Close everything
+    call h5sclose_f(memspace_id, error)
+    call h5sclose_f(dataspace_id, error)
+    call h5dclose_f(dataset_id, error)
+    call h5fclose_f(file_id, error)
+    
+end subroutine append_double_3D_array_as_data
+subroutine create_empty_double_3D(data, filename, dataset_name, total_configs)
+    real(flyt), intent(in) :: data(:,:,:)  ! Use size(data) to get 3 x N_atoms dimensions
+    character(len=*), intent(in) :: filename, dataset_name
+    integer, intent(in) :: total_configs
+    
+    integer(HID_T) :: file_id, dataset_id, dataspace_id, plist_id
+    integer(HSIZE_T) :: dims(3), chunk_dims(3)
+    integer :: error
+    logical :: file_exists
+    
+    ! Check if file exists
+    inquire(file=filename, exist=file_exists)
+    
+    if (file_exists) then
+        call h5fopen_f(filename, H5F_ACC_RDWR_F, file_id, error)
+    else
+        call h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error)
+    end if
+    
+    ! Dataset dimensions: use actual data dimensions + total_configs
+    dims = [int(size(data,1), HSIZE_T), int(size(data,2), HSIZE_T), int(total_configs, HSIZE_T)]
+    
+    ! Chunk along config dimension for efficient appending
+    ! Larger chunks for better compression
+    chunk_dims = [int(size(data,1), HSIZE_T), int(size(data,2), HSIZE_T), min(1000_HSIZE_T, int(total_configs, HSIZE_T))]
+    
+    ! Create dataspace
+    call h5screate_simple_f(3, dims, dataspace_id, error)
+    
+    ! Create dataset creation property list with chunking and compression
+    call h5pcreate_f(H5P_DATASET_CREATE_F, plist_id, error)
+    
+    ! Enable chunking (required for compression)
+    call h5pset_chunk_f(plist_id, 3, chunk_dims, error)
+    
+    ! Enable gzip compression
+    call h5pset_deflate_f(plist_id, 6, error)
+    
+    ! Optional: Enable shuffle filter (reorders bytes for better compression)
+    call h5pset_shuffle_f(plist_id, error)
+    
+    ! Create dataset
+    call h5dcreate_f(file_id, dataset_name, H5T_NATIVE_DOUBLE, dataspace_id, &
+                    dataset_id, error, plist_id)
+    
+    if (error == 0) then
+        write(*,'(A,A,A,I0)') 'Created compressed dataset: ', trim(dataset_name), &
+                             ' with compression level ', 6
+    else
+        write(*,*) 'Error creating compressed dataset: ', trim(dataset_name)
+    end if
+    
+    ! Close everything
+    call h5pclose_f(plist_id, error)
+    call h5dclose_f(dataset_id, error)
+    call h5sclose_f(dataspace_id, error)
+    call h5fclose_f(file_id, error)
+    
+end subroutine create_empty_double_3D
+
 
 end module

@@ -116,6 +116,9 @@ init: block
             end if
 
             call cc%init_empty(uc, ss, local_nconf, opts%temperature)
+            if (mw%talk) then
+                call cc%write_hdf5_header(uc, ss, 'outfile.canonical_configs.hdf5', opts%verbosity)
+            end if
         end if
     end if
 
@@ -126,7 +129,7 @@ end block init
 
 energy : block
 
-    integer :: i, u 
+    integer :: i, u, ierr, write_rank
     real(r8), dimension(:, :), allocatable :: f2, f3, f4, fp
     real(r8) :: e2, e3, e4, ep, total_energy, to_ev_per_atom
     character(len=100) :: filename
@@ -146,9 +149,31 @@ energy : block
         end if
 
         if (opts%dumpconfigs) then
-            ! Each rank writes its own file
-            write(filename, '(A,I0,A)') 'outfile.canonical_configs.rank_', mw%r, '.hdf5'
-            call cc%write_to_hdf5(uc, ss, filename, opts%verbosity)
+
+            call MPI_Barrier(MPI_COMM_WORLD, ierr)
+
+            ! Step 3: Each rank appends in order (sequential)
+            do write_rank = 0, mw%n - 1
+                if (mw%r == write_rank) then
+                    integer :: global_offset
+                    
+                    ! Calculate where this rank's data should go
+                    global_offset = get_global_start_index(mw%r, opts%nconf, mw%n) - 1
+                    
+                    ! Append this rank's data
+                    call lo_h5_append_data('outfile.canonical_configs.hdf5', 'positions', cc%r, global_offset)
+                    call lo_h5_append_data('outfile.canonical_configs.hdf5', 'velocities', cc%v, global_offset)
+
+                    !TODO APPEND ENERGIES
+                                        
+                    if (mw%talk) then
+                        write(*,'(A,I0,A,I0,A)') 'Rank ', rank, ' wrote ', size(cc%r,3), ' configurations'
+                    end if
+                end if
+                
+                ! Ensure this rank finishes before next rank starts
+                call MPI_Barrier(MPI_COMM_WORLD, ierr)
+            end do
         end if
 
     else

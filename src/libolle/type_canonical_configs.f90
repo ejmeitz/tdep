@@ -40,9 +40,6 @@ type lo_canonical_configs_extra
     !> atomic numbers
     integer, dimension(:), allocatable :: unitcell_atomic_numbers
     integer, dimension(:), allocatable :: supercell_atomic_numbers
-    !> dielectric constant
-    real(r8), dimension(:, :), allocatable :: dielectric_tensor
-    real(r8), dimension(:, :, :), allocatable :: born_effective_charges
     !> Alloy things, if needed
     integer, dimension(:), allocatable ::      unitcell_componentcounter
     integer, dimension(:), allocatable ::      supercell_componentcounter
@@ -62,8 +59,6 @@ type lo_canonical_configs
     type(lo_crystalstructure) :: crystalstructure
     !> thermostat temperature
     real(r8) :: temperature_thermostat = -lo_huge
-    !> do we have born charges and dielectric tensors?
-    logical :: have_dielectric = .false.
     !> Are these alloy configurations?
     logical :: alloy = .false.
     !> number of configurations
@@ -88,9 +83,9 @@ end type
 contains
 
 !> Set a specific timestep 
-subroutine set_step(sim, positions, velocities, kinetic_energy, temperature, ep, e2, e3, e4, idx)
+subroutine set_step(cc, positions, velocities, kinetic_energy, temperature, ep, e2, e3, e4, idx)
     !> md simulation
-    class(lo_canonical_configs), intent(inout) :: sim
+    class(lo_canonical_configs), intent(inout) :: cc
     !> positions, in fractional coordinates
     real(r8), dimension(:, :), intent(in) :: positions
     !> velocities, in Cartesian coordinates
@@ -109,6 +104,8 @@ subroutine set_step(sim, positions, velocities, kinetic_energy, temperature, ep,
     real(r8), intent(in) :: e4
     !> index to set in storage
     integer, intent(in) :: idx
+
+    integer :: tmax
 
     ! Max number of timesteps
     tmax = size(cc%r, 3)
@@ -280,7 +277,7 @@ subroutine init_empty(cc, uc, ss, nstep, temperature)
 end subroutine
 
 !> write a simulation to hdf5
-subroutine write_to_hdf5(cc, uc, ss, filename, verbosity, eps, Z)
+subroutine write_to_hdf5(cc, uc, ss, filename, verbosity)
     !> md simulation
     class(lo_canonical_configs), intent(in) :: cc
     !> unitcell
@@ -291,13 +288,7 @@ subroutine write_to_hdf5(cc, uc, ss, filename, verbosity, eps, Z)
     character(len=*), intent(in) :: filename
     !> Talk a lot?
     integer, intent(in) :: verbosity
-    !> dielectric tensor
-    real(r8), dimension(3, 3), intent(in), optional :: eps
-    !> Born effective charges
-    real(r8), dimension(:, :, :), intent(in), optional :: Z
 
-    real(r8), dimension(3, 3) :: buf_eps
-    real(r8), dimension(:, :, :), allocatable :: buf_Z
     real(r8) :: timer
 
     init: block
@@ -310,18 +301,6 @@ subroutine write_to_hdf5(cc, uc, ss, filename, verbosity, eps, Z)
         ! Check that the supercell really is a supercell
         call ss%classify('supercell', uc)
 
-        ! Buffers for Born charges and dielectric tensor
-        if (present(eps)) then
-            buf_eps = eps
-        else
-            buf_eps = 0.0_r8
-        end if
-        lo_allocate(buf_Z(3, 3, uc%na))
-        if (present(Z)) then
-            buf_Z = Z
-        else
-            buf_Z = 0.0_r8
-        end if
     end block init
 
     writefile: block
@@ -352,24 +331,8 @@ subroutine write_to_hdf5(cc, uc, ss, filename, verbosity, eps, Z)
         lo_deallocate(dr)
         if (verbosity .gt. 0) write (*, *) '... wrote velocities'
 
-        ! Write time-dependent Born charges and dielectric constant
-        if (cc%have_dielectric) then
-            lo_allocate(dr(3, 3, cc%nt))
-            dr = cc%eps(:, :, 1:cc%nt)
-            call lo_h5_store_data(dr, h5%file_id, 'eps', enhet='dimensionless')
-            lo_deallocate(dr)
-
-            lo_allocate(dw(3, 3, cc%na, cc%nt))
-            dw = cc%Z(:, :, :, 1:cc%nt)
-            call lo_h5_store_data(dw, h5%file_id, 'Z', enhet='charge/bohr')
-            lo_deallocate(dw)
-
-            if (verbosity .gt. 0) write (*, *) '... wrote dielectric constant and Born charge'
-        end if
-
         ! Write some alloy things?
         if (cc%alloy) then
-            call lo_h5_store_data(cc%r_ref, h5%file_id, 'reference_positions', enhet='fractional')
             call lo_h5_store_data(cc%atomic_numbers, h5%file_id, 'atomic_numbers', enhet='Z')
             ! Then the alloy specification
             call lo_h5_store_data(cc%extra%unitcell_componentcounter, h5%file_id, 'unitcell_componentcounter')

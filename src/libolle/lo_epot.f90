@@ -68,8 +68,8 @@ module lo_epot
         ! Cannot use sim with multiple threads
         ! unless it is pre-allocated with init_empty
         if (present(sim)) then
-            if (size(sim%r, 3) .lt. 1) then
-                call lo_stop_gracefully(['sim passed to statistical sampling has 0-length. Must be pre-allocated.'], lo_exitcode_param, __FILE__, __LINE__)
+            if (size(sim%r, 3) .neq. nstep) then
+                call lo_stop_gracefully(['sim passed to statistical sampling does not have length nstep. Must be preallocated.'], lo_exitcode_param, __FILE__, __LINE__)
             end if
         end if
     
@@ -111,8 +111,14 @@ module lo_epot
             ebuf(i, 4) = ep          
 
             if (present(sim)) then
-                m0 = 0.0_r8 ! no stress
-                call sim%add_timestep(p%r, f_zeros, 0.0_r8, 0.0_r8, temperature, m0, atomic_numbers=p%atomic_number)
+                sim%r(:, :, i) = p%r
+                sim%stat%polar_potential_energy = ep
+                sim%stat%secondorder_potential_energy = e2
+                sim%stat%thirdorder_potential_energy = e3
+                sim%stat%fourthorder_potential_energy = e4
+
+                ! m0 = 0.0_r8 ! no stress
+                !call sim%add_timestep(p%r, f_zeros, 0.0_r8, 0.0_r8, temperature, m0, atomic_numbers=p%atomic_number)
             end if
             
         end do

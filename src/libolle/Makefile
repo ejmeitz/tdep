@@ -592,7 +592,7 @@ $(OBJECT_PATH)type_jij_secondorder.o:\
     $(OBJECT_PATH)type_crystalstructure.o
 	$(FC) $(FFLAGS) -c type_jij_secondorder.f90 -o $@
 
-$(OBJECT_PATH)type_canonical_configurations.o:\
+$(OBJECT_PATH)type_canonical_configs.o:\
     type_canonical_configs.f90\
     $(OBJECT_PATH)konstanter.o\
     $(OBJECT_PATH)gottochblandat.o\

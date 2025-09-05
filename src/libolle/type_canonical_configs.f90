@@ -1,5 +1,5 @@
 #include "precompilerdefinitions"
-module type_canonical_configurations
+module type_canonical_configs
 !! Information about an MD simulation
 use konstanter, only: r8, lo_pi, lo_huge, lo_hugeint, lo_sqtol, lo_status, &
                       lo_exitcode_param, lo_bohr_to_A, lo_Hartree_to_eV, &

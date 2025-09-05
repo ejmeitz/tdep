@@ -6,7 +6,7 @@ use konstanter, only: r8, lo_pi, lo_huge, lo_hugeint, lo_sqtol, lo_status, &
                       lo_exitcode_io, lo_velocity_au_to_Afs
 use gottochblandat, only: open_file, tochar, walltime 
 use mpi_wrappers, only:  lo_stop_gracefully
-use hdf5_wrappers, only: lo_hdf5_helper, lo_h5_store_attribute, lo_h5_store_data
+use hdf5_wrappers, only: lo_hdf5_helper, lo_h5_store_attribute, lo_h5_store_data, lo_h5_create_empty
 use type_crystalstructure, only: lo_crystalstructure
 
 implicit none
@@ -362,7 +362,7 @@ subroutine write_to_hdf5(cc, uc, ss, filename, verbosity)
 end subroutine
 
 
-subroutine write_hdf5_header(cc, uc, ss, filename, verbosity)
+subroutine write_hdf5_header(cc, uc, ss, filename, total_configs, verbosity)
     !> md simulation
     class(lo_canonical_configs), intent(in) :: cc
     !> unitcell
@@ -371,6 +371,8 @@ subroutine write_hdf5_header(cc, uc, ss, filename, verbosity)
     type(lo_crystalstructure), intent(inout) :: ss
     !> filename
     character(len=*), intent(in) :: filename
+    !> total number of configurations 
+    integer, intent(in) :: total_configs
     !> Talk a lot?
     integer, intent(in) :: verbosity
 
@@ -380,19 +382,11 @@ subroutine write_hdf5_header(cc, uc, ss, filename, verbosity)
     call h5%init(__FILE__, __LINE__)
     call h5%open_file('write', trim(filename))
 
-    call lo_h5_create_empty(cc%r, filename, 'positions', total_configs)
-    call lo_h5_create_empty(cc%v, filename, 'velocities', total_configs)
-    call lo_h5_create_empty(cc%stat%polar_potential_energy, filename, 'polar_potential_energy', total_configs)
-    call lo_h5_create_empty(cc%stat%secondorder_potential_energy, filename, 'secondorder_potential_energy', total_configs)
-    call lo_h5_create_empty(cc%stat%thirdorder_potential_energy, filename, 'thirdorder_potential_energy', total_configs)
-    call lo_h5_create_empty(cc%stat%fourthorder_potential_energy, filename, 'fourthorder_potential_energy', total_configs)
-    if (verbosity .gt. 0) write (*, *) '... created empty datasets'
-
     ! Store some metadata. Not sure if effective.
     call lo_h5_store_attribute(cc%na, h5%file_id, 'number_of_atoms')
-    call lo_h5_store_attribute(cc%nt, h5%file_id, 'number_of_timesteps')
+    call lo_h5_store_attribute(total_configs, h5%file_id, 'number_of_configurations')
     call lo_h5_store_attribute(cc%temperature_thermostat, h5%file_id, 'temperature_thermostat')
-    call lo_h5_store_attribute(cc%alloy, h5%file_id, 'is_simulation_alloy')
+    call lo_h5_store_attribute(cc%alloy, h5%file_id, 'is_alloy')
 
     ! Write some alloy things?
     if (cc%alloy) then
@@ -414,6 +408,15 @@ subroutine write_hdf5_header(cc, uc, ss, filename, verbosity)
     call lo_h5_store_data(uc%atomic_number, h5%file_id, 'unitcell_atomic_numbers', enhet='e')
     call lo_h5_store_data(ss%atomic_number, h5%file_id, 'supercell_atomic_numbers', enhet='e')
     if (verbosity .gt. 0) write (*, *) '... wrote energies and metadata'
+
+    
+    call lo_h5_create_empty(cc%r, filename, 'positions', total_configs)
+    call lo_h5_create_empty(cc%v, filename, 'velocities', total_configs)
+    call lo_h5_create_empty(cc%stat%polar_potential_energy, filename, 'polar_potential_energy', total_configs)
+    call lo_h5_create_empty(cc%stat%secondorder_potential_energy, filename, 'secondorder_potential_energy', total_configs)
+    call lo_h5_create_empty(cc%stat%thirdorder_potential_energy, filename, 'thirdorder_potential_energy', total_configs)
+    call lo_h5_create_empty(cc%stat%fourthorder_potential_energy, filename, 'fourthorder_potential_energy', total_configs)
+    if (verbosity .gt. 0) write (*, *) '... created empty datasets'
         
     
     call h5%close_file()
@@ -442,7 +445,7 @@ subroutine append_to_hdf5(cc, uc, ss, filename, init, total_configs, offset, ver
 
 
     type(lo_hdf5_helper) :: h5
-    
+
     ! Initialize hdf5 properly
     call h5%init(__FILE__, __LINE__)
 

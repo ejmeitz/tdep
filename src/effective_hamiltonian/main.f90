@@ -13,6 +13,8 @@ use type_forceconstant_thirdorder, only: lo_forceconstant_thirdorder
 use type_forceconstant_fourthorder, only: lo_forceconstant_fourthorder
 use type_canonical_configs, only: lo_canonical_configs
 use type_mdsim, only: lo_mdsim
+use hdf5_wrappers, only: lo_h5_append_data
+
 
 use lo_epot, only: lo_energy_differences
 
@@ -117,7 +119,7 @@ init: block
 
             call cc%init_empty(uc, ss, local_nconf, opts%temperature)
             if (mw%talk) then
-                call cc%write_hdf5_header(uc, ss, 'outfile.canonical_configs.hdf5', opts%verbosity)
+                call cc%write_hdf5_header(uc, ss, 'outfile.canonical_configs.hdf5', opts%nconf, opts%verbosity)
             end if
         end if
     end if

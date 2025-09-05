@@ -121,7 +121,6 @@ subroutine set_step(cc, positions, velocities, kinetic_energy, temperature, ep, 
 
     ! Store energies and stuff
     cc%stat%kinetic_energy(idx) = kinetic_energy
-    cc%stat%total_energy(idx) = potential_energy + kinetic_energy
     cc%stat%temperature(idx) = temperature
 
     cc%stat%polar_potential_energy(idx) = ep

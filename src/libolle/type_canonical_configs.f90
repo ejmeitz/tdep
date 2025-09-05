@@ -312,7 +312,6 @@ subroutine write_to_hdf5(cc, uc, ss, filename, verbosity)
         if (verbosity .gt. 0) write (*, *) '... wrote positions'
 
         ! Write velocities
-        lo_allocate(dr(3, cc%na, cc%nt))
         dr = cc%v(:, :, 1:cc%nt)*lo_velocity_au_to_Afs
         call lo_h5_store_data(dr, h5%file_id, 'velocities', enhet='A/fs')
         lo_deallocate(dr)
@@ -342,7 +341,7 @@ subroutine write_to_hdf5(cc, uc, ss, filename, verbosity)
         call lo_h5_store_data(ds, h5%file_id, 'fourthorder_potential_energy', enhet='eV')
         ds = cc%stat%kinetic_energy(1:cc%nt)*lo_Hartree_to_eV
         call lo_h5_store_data(ds, h5%file_id, 'kinetic_energy', enhet='eV')
-        lo_deallocate(dr)
+        lo_deallocate(ds)
 
         ! Maybe some auxiliary stuff
         call lo_h5_store_data(uc%latticevectors*lo_bohr_to_A, h5%file_id, 'unitcell_latticevectors', enhet='A')

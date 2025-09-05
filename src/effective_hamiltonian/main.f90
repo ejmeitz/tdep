@@ -22,7 +22,8 @@ implicit none
 type(lo_opts) :: opts
 type(lo_crystalstructure) :: ss, uc
 type(lo_energy_differences) :: pot
-type(lo_canonical_configs) :: sim
+type(lo_mdsim) :: sim
+type(lo_canonical_configs) :: cc
 
 
 type(lo_forceconstant_secondorder) :: fc2
@@ -32,8 +33,7 @@ type(lo_forceconstant_fourthorder) :: fc4
 
 type(lo_mpi_helper) :: mw
 type(lo_mem_helper) :: mem
-real(r8), dimension(:, :), allocatable :: pebuf
-! real(r8), dimension(:), allocatable :: kebuf
+real(r8), dimension(:, :), allocatable :: ebuf
 
 logical :: generate_configs = .false.
 
@@ -44,7 +44,7 @@ call mem%init()
 
 init: block
 
-    integer :: f, i, j, l, readrank
+    integer :: f, i, j, l, readrank, local_nconf
     logical :: readonthisrank, mpiparallel
     real(r8) :: t0
 
@@ -108,7 +108,13 @@ init: block
         if (mw%talk) write (*, *) '... parsed simulation data'
     else
         if (opts%dumpconfigs) then
-            call sim%init_empty(uc, ss, opts%nconf, opts%temperature)
+            ! Calculate local number of configurations for this rank
+            local_nconf = opts%nconf / mw%n
+            if (mw%r < mod(opts%nconf, mw%n)) then
+                local_nconf = local_nconf + 1
+            end if
+
+            call cc%init_empty(uc, ss, local_nconf, opts%temperature)
         end if
     end if
 
@@ -122,32 +128,32 @@ energy : block
     integer :: i, u 
     real(r8), dimension(:, :), allocatable :: f2, f3, f4, fp
     real(r8) :: e2, e3, e4, ep, total_energy, to_ev_per_atom
+    character(len=100) :: filename
+    ! real(r8), dimension(:, :, :) allocatable :: r_buf, v_buf
 
 
     if (generate_configs) then
 
         if (mw%talk) write (*, *) '... generating canonical configurations'
-        call mem%allocate(pebuf, [opts%nconf, 4], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
-        pebuf = 0.0_r8
+        call mem%allocate(ebuf, [opts%nconf, 5], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
+        ebuf = 0.0_r8
 
         if (opts%dumpconfigs) then
-            call pot%statistical_sampling(uc, ss, fc2, opts%nconf, opts%temperature, opts%quantum, pebuf, mw, mem, opts%verbosity, sim)
+            call pot%statistical_sampling(uc, ss, fc2, opts%nconf, opts%temperature, opts%quantum, ebuf, mw, mem, opts%verbosity, cc)
         else
-            call pot%statistical_sampling(uc, ss, fc2, opts%nconf, opts%temperature, opts%quantum, pebuf, mw, mem, opts%verbosity)
+            call pot%statistical_sampling(uc, ss, fc2, opts%nconf, opts%temperature, opts%quantum, ebuf, mw, mem, opts%verbosity)
         end if
 
-        if (mw%talk .and. opts%dumpconfigs) then
-            sim%nt = opts%nconf ! this counter is incremented incorrectly with MPI, so set it to the right value
-            call sim%write_to_hdf5(uc, ss, 'outfile.canonical_configs.hdf5', opts%verbosity)
+        if (opts%dumpconfigs) then
+            ! Each rank writes its own file
+            write(filename, '(A,I0,A)') 'outfile.canonical_configs.rank_', mw%r, '.hdf5'
+            call cc%write_to_hdf5(uc, ss, filename, opts%verbosity)
         end if
 
     else
 
-        call mem%allocate(pebuf, [sim%nt, 4], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
-        pebuf = 0.0_r8
-
-        ! call mem%allocate(kebuf, [sim%nt], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
-        ! kebuf = 0.0_r8
+        call mem%allocate(ebuf, [sim%nt, 4], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
+        ebuf = 0.0_r8
 
         ! Dummy space for force
         call mem%allocate(f2, [3, ss%na], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
@@ -167,13 +173,13 @@ energy : block
             ! Calculate the energy, e2/e3/e4/ep are zeroed inside of this call
             call pot%energies_and_forces(sim%u(:,:,i), e2, e3, e4, ep, f2, f3, f4, fp)
 
-            pebuf(i, 1) = e2
-            pebuf(i, 2) = e3
-            pebuf(i, 3) = e4
-            pebuf(i, 4) = ep
+            ebuf(i, 1) = e2
+            ebuf(i, 2) = e3
+            ebuf(i, 3) = e4
+            ebuf(i, 4) = ep
         end do
 
-        call mw%allreduce('sum', pebuf)
+        call mw%allreduce('sum', ebuf)
 
     end if
 
@@ -198,66 +204,7 @@ epotthings: block
 
 
     if (.not. generate_configs) then
-        ! Calculate the baseline energy
-        allocate (ediff(sim%nt, 5))
-        ediff = 0.0_r8
 
-        do i = 1, sim%nt
-            if (mod(i, mw%n) .ne. mw%r) cycle
-            ediff(i, 1) = sim%stat%potential_energy(i)
-            ediff(i, 2) = sim%stat%potential_energy(i) -  pebuf(i, 1)
-            ediff(i, 3) = sim%stat%potential_energy(i) -  pebuf(i, 1) - pebuf(i, 4)
-            ediff(i, 4) = sim%stat%potential_energy(i) -  pebuf(i, 1) - pebuf(i, 4) - pebuf(i, 2)
-            ediff(i, 5) = sim%stat%potential_energy(i) -  pebuf(i, 1) - pebuf(i, 4) - pebuf(i, 2) - pebuf(i, 3)
-        end do
-        call mw%allreduce('sum', ediff)
-
-        if (T_actual .gt. 1E-5_r8) then
-            inverse_kbt = 1.0_r8/lo_kb_Hartree/T_actual
-        else
-            inverse_kbt = 0.0_r8
-        end if
-
-        ! Compute the first and second order cumulants
-        do i = 1, 5
-            cumulant(1, i) = lo_mean(ediff(:, i))
-            cumulant(2, i) = lo_mean((ediff(:, i) - cumulant(1, i))**2)
-            cumulant(2, i) = cumulant(2, i)*inverse_kbt*0.5_r8
-            cumulant(3, i) = lo_mean((ediff(:, i) - cumulant(1, i))**3)
-            cumulant(3, i) = cumulant(3, i)*inverse_kbt**2/6.0_r8
-        end do
-
-        ! And normalize it to be per atom
-        cumulant = cumulant*to_mev_per_atom
-        if (mw%talk) then
-            u = open_file('out', 'outfile.cumulants')
-
-            write (u, *) '# Temperature (K) : ', T_actual
-            write (u, '(A,A)') '# no. atoms: ', tochar(ss%na)
-            write (u, *) '# Potential energy [eV / atom]:'
-            write (u, "(1X,A,E21.14,1X,A,F21.14)") '                  mean(E): ', cumulant(1, 1), ' upper bound:', cumulant(2, 1)
-            write (u, "(1X,A,E21.14,1X,A,F21.14)") '                  mean(E-E2): ', cumulant(1, 2), ' upper bound:', cumulant(2, 2)
-            write (u, "(1X,A,E21.14,1X,A,F21.14)") '            mean(E-E2-Epolar): ', cumulant(1, 3), ' upper bound:', cumulant(2, 3)
-            if (opts%thirdorder) then
-                write (u, "(1X,A,E21.14,1X,A,F21.14)") '        mean(E-E2-Epolar-E3): ', cumulant(1, 4), ' upper bound:', cumulant(2, 4)
-            end if
-            if (opts%fourthorder) then
-                write (u, "(1X,A,E21.14,1X,A,F21.14)") '    mean(E-E2-Epolar-E3-E4): ', cumulant(1, 5), ' upper bound:', cumulant(2, 5)
-            end if
-
-            close(u)
-            write (*, '(A)') ' ... cumulants writen to `outfile.cumulants`'
-        end if
-
-        if(opts%thirdorder .and. (.not. opts%fourthorder)) then
-            U0 = cumulant(1,4)
-        else if(opts%fourthorder) then
-            U0 = cumulant(1,5)
-        else
-            U0 = cumulant(1,3)
-        end if
-
-        ! Now that we have U0 we can get E_total_tdep
         if (mw%talk) then
             u = open_file('out', 'outfile.energies')
             write (u, '(A,A)') '# Unit:      ', 'meV/atom'
@@ -267,10 +214,10 @@ epotthings: block
                 &Epair               Etriplet            Equartet'
             
             do i = 1, sim%nt
-                total_energy = sum(pebuf(i,:))*to_mev_per_atom + U0
-                write (u, "(1X,I8,6(2X,E20.12))") i, sim%stat%potential_energy(i)*to_mev_per_atom, total_energy, pebuf(i, 4)*to_mev_per_atom, &
-                                                    pebuf(i, 1)*to_mev_per_atom, pebuf(i, 2)*to_mev_per_atom, &
-                                                    pebuf(i, 3)*to_mev_per_atom
+                total_energy = sum(ebuf(i,:))*to_mev_per_atom + U0
+                write (u, "(1X,I8,6(2X,E20.12))") i, sim%stat%potential_energy(i)*to_mev_per_atom, total_energy, ebuf(i, 4)*to_mev_per_atom, &
+                                                    ebuf(i, 1)*to_mev_per_atom, ebuf(i, 2)*to_mev_per_atom, &
+                                                    ebuf(i, 3)*to_mev_per_atom
             end do
 
             ! close outfile.energies
@@ -280,20 +227,18 @@ epotthings: block
         end if
     
     ! Don't have sim%stat%potential energy when generating canonical_configs
-    ! So we cannot get U0 or cumulants
     else
         if (mw%talk) then
             u = open_file('out', 'outfile.energies')
             write (u, '(A,A)') '# Unit:      ', 'meV/atom'
             write (u, *) '# Temperature (K) : ', T_actual
             write (u, '(A,A)') '# no. atoms: ', tochar(ss%na)
-            write (u, "(A)") '# True potential energy unknown when using canonical configs, cannot calculate U0 or other cumulants.'
-            write (u, "(A)") '#  conf      Epolar              &
+            write (u, "(A)") '#  conf      Ekinetic            Epolar              &
                 &Epair               Etriplet            Equartet'
             
             do i = 1, opts%nconf
-                write (u, "(1X,I8,4(2X,E20.12))") i, pebuf(i, 4)*to_mev_per_atom, pebuf(i, 1)*to_mev_per_atom, &
-                                                    pebuf(i, 2)*to_mev_per_atom, pebuf(i, 3)*to_mev_per_atom
+                write (u, "(1X,I8,5(2X,E20.12))") i, ebuf(i, 5)*to_mev_per_atom, ebuf(i, 4)*to_mev_per_atom, ebuf(i, 1)*to_mev_per_atom, &
+                                                    ebuf(i, 2)*to_mev_per_atom, ebuf(i, 3)*to_mev_per_atom
             end do
 
             close (u)

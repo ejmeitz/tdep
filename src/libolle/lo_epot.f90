@@ -60,7 +60,7 @@ module lo_epot
         type(lo_canonical_configs), intent(inout), optional :: sim
     
         type(lo_crystalstructure) :: p
-        integer :: ctr, i
+        integer :: ctr, i,
         real(r8), dimension(:, :), allocatable :: f2, f3, f4, fp
         real(r8) :: e2, e3, e4, ep, ek
         real(r8), dimension(3, 3) :: m0
@@ -88,9 +88,11 @@ module lo_epot
         f4 = 0.0_r8
         fp = 0.0_r8
         
+        ctr = 0
         do i = 1, nstep
 
             if (mod(i, mw%n) .ne. mw%r) cycle
+            ctr = ctr + 1
 
             ! Reset structure
             p%u = 0.0_r8
@@ -106,10 +108,11 @@ module lo_epot
             ebuf(i, 1) = e2
             ebuf(i, 2) = e3
             ebuf(i, 3) = e4
-            ebuf(i, 4) = ep          
+            ebuf(i, 4) = ep 
+            ebuf(i, 5) = ek*p%na         
 
             if (present(sim)) then
-                call sim%set_step(p%r, p%v, ek*p%na, ek/(1.5_r8*lo_kb_hartree), ep, e2, e3, e4, i)
+                call sim%set_step(p%r, p%v, ek*p%na, ep, e2, e3, e4, ctr)
             end if
             
         end do

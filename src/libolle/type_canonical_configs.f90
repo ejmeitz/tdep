@@ -15,8 +15,6 @@ public :: lo_canonical_configs
 
 !> All the energies in an simulation
 type lo_canonical_configs_stat
-    !> instantaneous temperature
-    real(r8), dimension(:), allocatable :: temperature
     !> kinetic energy
     real(r8), dimension(:), allocatable :: kinetic_energy
     !> dipole-dipole energy
@@ -83,7 +81,7 @@ end type
 contains
 
 !> Set a specific timestep 
-subroutine set_step(cc, positions, velocities, kinetic_energy, temperature, ep, e2, e3, e4, idx)
+subroutine set_step(cc, positions, velocities, kinetic_energy, ep, e2, e3, e4, idx)
     !> md simulation
     class(lo_canonical_configs), intent(inout) :: cc
     !> positions, in fractional coordinates
@@ -92,8 +90,6 @@ subroutine set_step(cc, positions, velocities, kinetic_energy, temperature, ep, 
     real(r8), dimension(:, :), intent(in) :: velocities
     !> kinetic energy (per atom)
     real(r8), intent(in) :: kinetic_energy
-    !> instantaneous temperature
-    real(r8), intent(in) :: temperature
     !> polar component of potential energy
     real(r8), intent(in) :: ep
     !> harmonic component of potential energy
@@ -121,8 +117,6 @@ subroutine set_step(cc, positions, velocities, kinetic_energy, temperature, ep, 
 
     ! Store energies and stuff
     cc%stat%kinetic_energy(idx) = kinetic_energy
-    cc%stat%temperature(idx) = temperature
-
     cc%stat%polar_potential_energy(idx) = ep
     cc%stat%secondorder_potential_energy(idx) = e2
     cc%stat%thirdorder_potential_energy(idx) = e3
@@ -257,13 +251,11 @@ subroutine init_empty(cc, uc, ss, nstep, temperature)
     ! And some space for energies
     energies: block
         lo_allocate(cc%stat%kinetic_energy(nstep))
-        lo_allocate(cc%stat%temperature(nstep))
         lo_allocate(cc%stat%polar_potential_energy(nstep))
         lo_allocate(cc%stat%secondorder_potential_energy(nstep))
         lo_allocate(cc%stat%thirdorder_potential_energy(nstep))
         lo_allocate(cc%stat%fourthorder_potential_energy(nstep))
         cc%stat%kinetic_energy = 0.0_r8
-        cc%stat%temperature = 0.0_r8
         cc%stat%polar_potential_energy = 0.0_r8
         cc%stat%secondorder_potential_energy = 0.0_r8
         cc%stat%thirdorder_potential_energy = 0.0_r8
@@ -350,8 +342,6 @@ subroutine write_to_hdf5(cc, uc, ss, filename, verbosity)
         call lo_h5_store_data(ds, h5%file_id, 'fourthorder_potential_energy', enhet='eV')
         ds = cc%stat%kinetic_energy(1:cc%nt)*lo_Hartree_to_eV
         call lo_h5_store_data(ds, h5%file_id, 'kinetic_energy', enhet='eV')
-        ds = cc%stat%temperature(1:cc%nt)
-        call lo_h5_store_data(ds, h5%file_id, 'temperature', enhet='K')
         lo_deallocate(dr)
 
         ! Maybe some auxiliary stuff

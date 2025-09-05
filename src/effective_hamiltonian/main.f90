@@ -152,29 +152,27 @@ energy : block
 
         if (opts%dumpconfigs) then
 
-            call MPI_Barrier(MPI_COMM_WORLD, ierr)
+            call mw%barrier('main.f90', 155)
 
-            ! Step 3: Each rank appends in order (sequential)
+            !> Each rank appends in order (sequential)
             do write_rank = 0, mw%n - 1
                 if (mw%r == write_rank) then
                     integer :: global_offset
                     
                     ! Calculate where this rank's data should go
-                    global_offset = get_global_start_index(mw%r, opts%nconf, mw%n) - 1
+                    !> HOW TO DO THSI ROBUSTLY? NOT ALL RANKS GURANTEED SAME SIZE
+                    global_offset = mw%r * cc%nt ! NOT GENERICALLY CORRECT
                     
                     ! Append this rank's data
                     call lo_h5_append_data('outfile.canonical_configs.hdf5', 'positions', cc%r, global_offset)
                     call lo_h5_append_data('outfile.canonical_configs.hdf5', 'velocities', cc%v, global_offset)
 
                     !TODO APPEND ENERGIES
-                                        
-                    if (mw%talk) then
-                        write(*,'(A,I0,A,I0,A)') 'Rank ', rank, ' wrote ', size(cc%r,3), ' configurations'
-                    end if
+
                 end if
                 
                 ! Ensure this rank finishes before next rank starts
-                call MPI_Barrier(MPI_COMM_WORLD, ierr)
+                call mw%barrier('main.f90', 178)
             end do
         end if
 

@@ -60,7 +60,7 @@ module lo_epot
         type(lo_canonical_configs), intent(inout), optional :: sim
     
         type(lo_crystalstructure) :: p
-        integer :: ctr, i,
+        integer :: ctr, i
         real(r8), dimension(:, :), allocatable :: f2, f3, f4, fp
         real(r8) :: e2, e3, e4, ep, ek
         real(r8), dimension(3, 3) :: m0

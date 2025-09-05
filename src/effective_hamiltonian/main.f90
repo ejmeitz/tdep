@@ -11,7 +11,7 @@ use gottochblandat, only: tochar, walltime, lo_stop_gracefully, open_file, lo_pr
 use type_forceconstant_secondorder, only: lo_forceconstant_secondorder
 use type_forceconstant_thirdorder, only: lo_forceconstant_thirdorder
 use type_forceconstant_fourthorder, only: lo_forceconstant_fourthorder
-use type_mdsim, only: lo_mdsim
+use type_canonical_configurations, only: lo_canonical_configs
 
 use lo_epot, only: lo_energy_differences
 
@@ -22,7 +22,7 @@ implicit none
 type(lo_opts) :: opts
 type(lo_crystalstructure) :: ss, uc
 type(lo_energy_differences) :: pot
-type(lo_mdsim) :: sim
+type(lo_canonical_configs) :: sim
 
 
 type(lo_forceconstant_secondorder) :: fc2
@@ -108,7 +108,7 @@ init: block
         if (mw%talk) write (*, *) '... parsed simulation data'
     else
         if (opts%dumpconfigs) then
-            call sim%init_empty(uc, ss, opts%nconf, opts%temperature, timestep=-1.0_r8, magnetic_moments=.false., variable_lattice=.false.)
+            call sim%init_empty(uc, ss, opts%nconf, opts%temperature)
         end if
     end if
 
@@ -137,6 +137,7 @@ energy : block
         end if
 
         if (mw%talk .and. opts%dumpconfigs) then
+            sim%nt = opts%nconf ! this counter is incremented incorrectly with MPI, so set it to the right value
             call sim%write_to_hdf5(uc, ss, 'outfile.canonical_configs.hdf5', opts%verbosity)
         end if
 

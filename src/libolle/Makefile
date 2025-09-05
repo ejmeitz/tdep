@@ -84,6 +84,7 @@ $(OBJECT_PATH)type_graph_distancetable.o \
 $(OBJECT_PATH)type_voronoi.o \
 $(OBJECT_PATH)type_voronoi_distancetable.o \
 $(OBJECT_PATH)type_blas_lapack_wrappers.o \
+$(OBJECT_PATH)type_canonical_configs.o \
 $(OBJECT_PATH)type_crystalstructure.o \
 $(OBJECT_PATH)type_crystalstructure_atomdata.o \
 $(OBJECT_PATH)type_crystalstructure_io.o \
@@ -590,6 +591,15 @@ $(OBJECT_PATH)type_jij_secondorder.o:\
     $(OBJECT_PATH)type_distancetable.o\
     $(OBJECT_PATH)type_crystalstructure.o
 	$(FC) $(FFLAGS) -c type_jij_secondorder.f90 -o $@
+
+$(OBJECT_PATH)type_canonical_configurations.o:\
+    type_canonical_configs.f90\
+    $(OBJECT_PATH)konstanter.o\
+    $(OBJECT_PATH)gottochblandat.o\
+    $(OBJECT_PATH)hdf5_wrappers.o\
+    $(OBJECT_PATH)mpi_wrappers.o\
+    $(OBJECT_PATH)type_crystalstructure.o
+	$(FC) $(FFLAGS) -c type_canonical_configs.f90 -o $@
 
 $(OBJECT_PATH)type_mdsim.o:\
     type_mdsim.f90\

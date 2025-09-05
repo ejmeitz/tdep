@@ -1,7 +1,7 @@
 module lo_epot
     !! Deal with many kinds of potential energy differences
     use konstanter, only: r8, lo_pi, lo_twopi, lo_tol, lo_sqtol, lo_status, lo_Hartree_to_eV, lo_kb_hartree, lo_exitcode_param
-    use gottochblandat, only: tochar, walltime, lo_chop, lo_trueNtimes, lo_progressbar_init, &
+    use gottochblandat, only: tochar, walltime, lo_chop, lo_trueNtimes, lo_progressbar_init &
                               lo_progressbar, lo_frobnorm, open_file, lo_flattentensor, lo_sqnorm, lo_outerproduct, lo_mean, &
                               lo_points_on_sphere, lo_mean, lo_stddev
     use mpi_wrappers, only: lo_mpi_helper, lo_stop_gracefully
@@ -10,7 +10,7 @@ module lo_epot
     use type_forceconstant_secondorder, only: lo_forceconstant_secondorder
     use type_forceconstant_thirdorder, only: lo_forceconstant_thirdorder
     use type_forceconstant_fourthorder, only: lo_forceconstant_fourthorder
-    use type_mdsim, only: lo_mdsim
+    use type_canonical_configurations, only: lo_canonical_configs
     implicit none
     
     private
@@ -57,12 +57,12 @@ module lo_epot
         !> talk a lot?
         integer, intent(in) :: verbosity
         !> container to store configs in
-        type(lo_mdsim), intent(inout), optional :: sim
+        type(lo_canonical_configs), intent(inout), optional :: sim
     
         type(lo_crystalstructure) :: p
         integer :: ctr, i
-        real(r8), dimension(:, :), allocatable :: f2, f3, f4, fp, f_zeros
-        real(r8) :: e2, e3, e4, ep
+        real(r8), dimension(:, :), allocatable :: f2, f3, f4, fp
+        real(r8) :: e2, e3, e4, ep, ek
         real(r8), dimension(3, 3) :: m0
 
         ! Cannot use sim with multiple threads
@@ -83,12 +83,10 @@ module lo_epot
         call mem%allocate(f3, [3, ss%na], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
         call mem%allocate(f4, [3, ss%na], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
         call mem%allocate(fp, [3, ss%na], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
-        call mem%allocate(f_zeros, [3, ss%na], persistent=.false., scalable=.false., file=__FILE__, line=__LINE__)
         f2 = 0.0_r8
         f3 = 0.0_r8
         f4 = 0.0_r8
         fp = 0.0_r8
-        f_zeros = 0.0_r8
         
         do i = 1, nstep
 
@@ -103,7 +101,7 @@ module lo_epot
             ! Calculate the energy
             call pot%energies_and_forces(p%u, e2, e3, e4, ep, f2, f3, f4, fp)
 
-            ! ek = p%kinetic_energy()/(p%na)
+            ek = p%kinetic_energy()/(p%na)
 
             ebuf(i, 1) = e2
             ebuf(i, 2) = e3
@@ -111,14 +109,7 @@ module lo_epot
             ebuf(i, 4) = ep          
 
             if (present(sim)) then
-                sim%r(:, :, i) = p%r
-                sim%stat%polar_potential_energy(i) = ep
-                sim%stat%secondorder_potential_energy(i) = e2
-                sim%stat%thirdorder_potential_energy(i) = e3
-                sim%stat%fourthorder_potential_energy(i) = e4
-
-                ! m0 = 0.0_r8 ! no stress
-                !call sim%add_timestep(p%r, f_zeros, 0.0_r8, 0.0_r8, temperature, m0, atomic_numbers=p%atomic_number)
+                call sim%set_step(p%r, p%v, ek*p%na, ek/(1.5_r8*lo_kb_hartree), ep, e2, e3, e4, i)
             end if
             
         end do

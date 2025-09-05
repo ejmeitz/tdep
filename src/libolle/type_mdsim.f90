@@ -146,7 +146,7 @@ end type
 contains
 
 !> Add a timestep to a simulation
-subroutine add_timestep(sim, positions, forces, potential_energy, kinetic_energy, temperature, stresstensor, latticevectors, magnetic_moments, velocities, atomic_numbers, reference_positions, t_idx)
+subroutine add_timestep(sim, positions, forces, potential_energy, kinetic_energy, temperature, stresstensor, latticevectors, magnetic_moments, velocities, atomic_numbers, reference_positions)
     !> md simulation
     class(lo_mdsim), intent(inout) :: sim
     !> positions, in fractional coordinates
@@ -171,23 +171,15 @@ subroutine add_timestep(sim, positions, forces, potential_energy, kinetic_energy
     integer, dimension(:), intent(in), optional :: atomic_numbers
     !> reference positions
     real(r8), dimension(:, :), intent(in), optional :: reference_positions
-    !> Which timestep to write
-    integer, intent(in), optional :: t_idx
 
     integer :: i, t, tmax
 
     ! Current step
-    if (present(t_idx)) then
-        t = t_idx
-    else
-        t = sim%nt + 1
-    end if
-
+    t = sim%nt
     ! Current max number of timesteps
     tmax = size(sim%r, 3)
-
     ! Sanity tests
-    if (t .gt. tmax) then
+    if (t + 1 .gt. tmax) then
         call lo_stop_gracefully(['Not enough space to store timestep'], lo_exitcode_param, __FILE__, __LINE__)
         ! In the future I should grow the arrays instead.
     end if
@@ -214,6 +206,9 @@ subroutine add_timestep(sim, positions, forces, potential_energy, kinetic_energy
             call lo_stop_gracefully(['Have to provide reference positions'], lo_exitcode_param, __FILE__, __LINE__)
         end if
     end if
+
+    ! Increment the counter for number of steps
+    t = t + 1
 
     ! Start storing things
     sim%r(:, :, t) = positions
@@ -257,7 +252,6 @@ subroutine add_timestep(sim, positions, forces, potential_energy, kinetic_energy
 
     ! Make a note that we have added another step
     sim%nt = sim%nt + 1
-
 end subroutine
 
 !> create empty sim container, to be filled incrementally

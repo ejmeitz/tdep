@@ -12,6 +12,7 @@ use type_forceconstant_secondorder, only: lo_forceconstant_secondorder
 use type_forceconstant_thirdorder, only: lo_forceconstant_thirdorder
 use type_forceconstant_fourthorder, only: lo_forceconstant_fourthorder
 use type_canonical_configs, only: lo_canonical_configs
+use type_mdsim, only: lo_mdsim
 
 use lo_epot, only: lo_energy_differences
 
@@ -191,17 +192,10 @@ end block energy
 epotthings: block
     real(r8), dimension(3, 5) :: cumulant
     real(r8), dimension(:, :), allocatable :: ediff
-    real(r8) :: inverse_kbt, T_actual, U0, total_energy, hartree_to_mev, to_mev_per_atom
+    real(r8) :: inverse_kbt, U0, total_energy, hartree_to_mev, to_mev_per_atom
     integer :: i, u
 
     to_mev_per_atom = 1000*lo_Hartree_to_eV / real(ss%na, r8)
-
-    if (generate_configs) then
-        T_actual = opts%temperature
-    else
-        T_actual = sim%temperature_thermostat
-    end if
-
 
     if (.not. generate_configs) then
 
@@ -231,7 +225,7 @@ epotthings: block
         if (mw%talk) then
             u = open_file('out', 'outfile.energies')
             write (u, '(A,A)') '# Unit:      ', 'meV/atom'
-            write (u, *) '# Temperature (K) : ', T_actual
+            write (u, *) '# Temperature (K) : ', opts%temperature
             write (u, '(A,A)') '# no. atoms: ', tochar(ss%na)
             write (u, "(A)") '#  conf      Ekinetic            Epolar              &
                 &Epair               Etriplet            Equartet'

@@ -135,6 +135,7 @@ energy : block
     real(r8), dimension(:, :), allocatable :: f2, f3, f4, fp
     real(r8) :: e2, e3, e4, ep, total_energy, to_ev_per_atom
     character(len=100) :: filename
+    integer :: global_offset
     ! real(r8), dimension(:, :, :) allocatable :: r_buf, v_buf
 
 
@@ -157,7 +158,6 @@ energy : block
             !> Each rank appends in order (sequential)
             do write_rank = 0, mw%n - 1
                 if (mw%r == write_rank) then
-                    integer :: global_offset
                     
                     ! Calculate where this rank's data should go
                     !> HOW TO DO THSI ROBUSTLY? NOT ALL RANKS GURANTEED SAME SIZE

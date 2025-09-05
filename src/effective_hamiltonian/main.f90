@@ -108,9 +108,7 @@ init: block
         if (mw%talk) write (*, *) '... parsed simulation data'
     else
         if (opts%dumpconfigs) then
-            sim%init_empty(uc, ss, opts%nconf, opts%temperature, timestep=-1.0_r8, &
-                            magnetic_moments=.false., &
-                            variable_lattice=.false.)
+            call sim%init_empty(uc, ss, opts%nconf, opts%temperature, timestep=-1.0_r8, magnetic_moments=.false., variable_lattice=.false.)
         end if
     end if
 
@@ -138,8 +136,8 @@ energy : block
             call pot%statistical_sampling(uc, ss, fc2, opts%nconf, opts%temperature, opts%quantum, pebuf, mw, mem, opts%verbosity)
         end if
 
-        if (mw%talk) then
-            sim%write_to_hdf5(uc, ss, 'outfile.canonical_configs.hdf5', opts%verbosity)
+        if (mw%talk .and. opts%dumpconfigs) then
+            call sim%write_to_hdf5(uc, ss, 'outfile.canonical_configs.hdf5', opts%verbosity)
         end if
 
     else

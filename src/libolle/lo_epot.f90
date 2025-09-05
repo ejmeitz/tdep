@@ -68,7 +68,7 @@ module lo_epot
         ! Cannot use sim with multiple threads
         ! unless it is pre-allocated with init_empty
         if (present(sim)) then
-            if (size(sim%r, 3) .neq. nstep) then
+            if (size(sim%r, 3) .ne. nstep) then
                 call lo_stop_gracefully(['sim passed to statistical sampling does not have length nstep. Must be preallocated.'], lo_exitcode_param, __FILE__, __LINE__)
             end if
         end if

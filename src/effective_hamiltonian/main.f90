@@ -11,7 +11,7 @@ use gottochblandat, only: tochar, walltime, lo_stop_gracefully, open_file, lo_pr
 use type_forceconstant_secondorder, only: lo_forceconstant_secondorder
 use type_forceconstant_thirdorder, only: lo_forceconstant_thirdorder
 use type_forceconstant_fourthorder, only: lo_forceconstant_fourthorder
-use type_canonical_configurations, only: lo_canonical_configs
+use type_canonical_configs, only: lo_canonical_configs
 
 use lo_epot, only: lo_energy_differences
 

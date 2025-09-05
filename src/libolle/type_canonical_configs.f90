@@ -29,7 +29,7 @@ type lo_canonical_configs_stat
     real(r8), dimension(:), allocatable :: fourthorder_potential_energy
 end type
 
-!> information from the reference starting position, such as Born charges, unitcell and so on
+!> information from the reference starting position, such as unitcell and so on
 type lo_canonical_configs_extra
     !> latticevectors
     real(r8), dimension(:, :), allocatable :: unitcell_latticevectors
@@ -178,16 +178,12 @@ subroutine init_empty(cc, uc, ss, nstep, temperature)
         lo_allocate(cc%extra%supercell_atomic_numbers(ss%na))
         lo_allocate(cc%extra%unitcell_latticevectors(3, 3))
         lo_allocate(cc%extra%supercell_latticevectors(3, 3))
-        lo_allocate(cc%extra%dielectric_tensor(3, 3))
-        lo_allocate(cc%extra%born_effective_charges(3, 3, uc%na))
         cc%extra%unitcell_positions = uc%r
         cc%extra%supercell_positions = ss%r
         cc%extra%unitcell_atomic_numbers = uc%atomic_number
         cc%extra%supercell_atomic_numbers = ss%atomic_number
         cc%extra%unitcell_latticevectors = uc%latticevectors
         cc%extra%supercell_latticevectors = ss%latticevectors
-        cc%extra%dielectric_tensor = 0.0_r8
-        cc%extra%born_effective_charges = 0.0_r8
 
         ! Also, if alloy store a lot of extra things
         if (cc%alloy) then
@@ -360,8 +356,6 @@ subroutine write_to_hdf5(cc, uc, ss, filename, verbosity)
         lo_deallocate(dr)
 
         ! Maybe some auxiliary stuff
-        call lo_h5_store_data(buf_Z, h5%file_id, 'born_effective_charges', enhet='e/A')
-        call lo_h5_store_data(buf_eps, h5%file_id, 'dielectric_tensor', enhet='dimensionless')
         call lo_h5_store_data(uc%latticevectors*lo_bohr_to_A, h5%file_id, 'unitcell_latticevectors', enhet='A')
         call lo_h5_store_data(ss%latticevectors*lo_bohr_to_A, h5%file_id, 'supercell_latticevectors', enhet='A')
         call lo_h5_store_data(uc%r, h5%file_id, 'unitcell_positions', enhet='dimensionless')

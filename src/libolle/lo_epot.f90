@@ -1,7 +1,7 @@
 module lo_epot
     !! Deal with many kinds of potential energy differences
     use konstanter, only: r8, lo_pi, lo_twopi, lo_tol, lo_sqtol, lo_status, lo_Hartree_to_eV, lo_kb_hartree, lo_exitcode_param
-    use gottochblandat, only: tochar, walltime, lo_chop, lo_trueNtimes, lo_progressbar_init &
+    use gottochblandat, only: tochar, walltime, lo_chop, lo_trueNtimes, lo_progressbar_init, &
                               lo_progressbar, lo_frobnorm, open_file, lo_flattentensor, lo_sqnorm, lo_outerproduct, lo_mean, &
                               lo_points_on_sphere, lo_mean, lo_stddev
     use mpi_wrappers, only: lo_mpi_helper, lo_stop_gracefully
@@ -10,7 +10,7 @@ module lo_epot
     use type_forceconstant_secondorder, only: lo_forceconstant_secondorder
     use type_forceconstant_thirdorder, only: lo_forceconstant_thirdorder
     use type_forceconstant_fourthorder, only: lo_forceconstant_fourthorder
-    use type_canonical_configurations, only: lo_canonical_configs
+    use type_canonical_configs, only: lo_canonical_configs
     implicit none
     
     private

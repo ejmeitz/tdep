@@ -33,7 +33,7 @@ module lo_epot
     contains
     
     !> statistically sample
-    subroutine statistical_sampling(pot, uc, ss, fc, nstep, temperature, quantum, ebuf, mw, mem, verbosity, sim)
+    subroutine statistical_sampling(pot, uc, ss, fc, nstep, temperature, quantum, ebuf, mw, mem, verbosity, cc)
         !> container for potential energy differences
         class(lo_energy_differences), intent(inout) :: pot
         !> unitcell
@@ -56,8 +56,8 @@ module lo_epot
         type(lo_mem_helper), intent(inout) :: mem
         !> talk a lot?
         integer, intent(in) :: verbosity
-        !> container to store configs in
-        type(lo_canonical_configs), intent(inout), optional :: sim
+        !> container to store configs in, pre-allocated with storage per mpi-rank
+        type(lo_canonical_configs), intent(inout), optional :: cc
     
         type(lo_crystalstructure) :: p
         integer :: ctr, i
@@ -65,13 +65,6 @@ module lo_epot
         real(r8) :: e2, e3, e4, ep, ek
         real(r8), dimension(3, 3) :: m0
 
-        ! Cannot use sim with multiple threads
-        ! unless it is pre-allocated with init_empty
-        if (present(sim)) then
-            if (size(sim%r, 3) .lt. nstep) then
-                call lo_stop_gracefully(['sim passed to statistical sampling does not have length nstep. Must be preallocated.'], lo_exitcode_param, __FILE__, __LINE__)
-            end if
-        end if
     
         ! Copy of structure to work with
         p = ss
@@ -111,8 +104,8 @@ module lo_epot
             ebuf(i, 4) = ep 
             ebuf(i, 5) = ek*p%na         
 
-            if (present(sim)) then
-                call sim%set_step(p%r, p%v, ek*p%na, ep, e2, e3, e4, ctr)
+            if (present(cc)) then
+                call cc%set_step(p%r, p%v, ek*p%na, ep, e2, e3, e4, ctr)
             end if
             
         end do

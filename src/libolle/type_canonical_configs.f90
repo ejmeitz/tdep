@@ -110,7 +110,7 @@ subroutine set_step(cc, positions, velocities, kinetic_energy, ep, e2, e3, e4, i
     integer, intent(in) :: idx
 
     integer :: tmax
-    character(len=*) :: msg
+    character(len=256) :: msg
 
     ! Max number of timesteps
     tmax = size(cc%r, 3)

@@ -11,6 +11,8 @@ use type_crystalstructure, only: lo_crystalstructure
 use hdf5
 use mpi
 
+use iso_fortran_env ! REMOVE LATER
+
 implicit none
 private
 public :: lo_canonical_configs
@@ -722,7 +724,7 @@ subroutine write_hdf5_mpi(cc, mw, filename)
     if (mw%r == p) then
         write(*,'(A,I0,3(A,I0))') 'rank ', mw%r, &
             '  na=', na, '  nt_local=', nt_local, '  offset=', offset_ccs
-        call flush(6)   ! or: use iso_fortran_env and flush(output_unit)
+        flush(6)
     end if
     call mw%barrier()
   end do

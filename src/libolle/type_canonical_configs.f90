@@ -76,8 +76,10 @@ contains
     procedure :: set_step
     !> write to hdf5
     procedure :: write_to_hdf5
+
     procedure :: write_hdf5_header
-    procedure :: append_to_hdf5
+
+    procedure :: write_hdf5_mpi
 end type
 
 contains
@@ -265,7 +267,7 @@ subroutine init_empty(cc, uc, ss, nstep, temperature)
     end block energies
 end subroutine
 
-!> write a simulation to hdf5
+!> write a simulation to hdf5 (assumes single rank writing)
 subroutine write_to_hdf5(cc, uc, ss, filename, verbosity)
     !> md simulation
     class(lo_canonical_configs), intent(in) :: cc
@@ -361,7 +363,7 @@ subroutine write_to_hdf5(cc, uc, ss, filename, verbosity)
     if (verbosity .gt. 0) write (*, *) 'wrote simulation (', tochar(walltime() - timer), 's)'
 end subroutine
 
-
+!> write header to hdf5 (assumes single rank writing)
 subroutine write_hdf5_header(cc, uc, ss, filename, total_configs, verbosity)
     !> md simulation
     class(lo_canonical_configs), intent(in) :: cc
@@ -407,17 +409,7 @@ subroutine write_hdf5_header(cc, uc, ss, filename, total_configs, verbosity)
     call lo_h5_store_data(ss%r, h5%file_id, 'supercell_positions', enhet='dimensionless')
     call lo_h5_store_data(uc%atomic_number, h5%file_id, 'unitcell_atomic_numbers', enhet='e')
     call lo_h5_store_data(ss%atomic_number, h5%file_id, 'supercell_atomic_numbers', enhet='e')
-    if (verbosity .gt. 0) write (*, *) '... wrote energies and metadata'
-
-    
-    call lo_h5_create_empty(cc%r, filename, 'positions', total_configs)
-    call lo_h5_create_empty(cc%v, filename, 'velocities', total_configs)
-    call lo_h5_create_empty(cc%stat%polar_potential_energy, filename, 'polar_potential_energy', total_configs)
-    call lo_h5_create_empty(cc%stat%secondorder_potential_energy, filename, 'secondorder_potential_energy', total_configs)
-    call lo_h5_create_empty(cc%stat%thirdorder_potential_energy, filename, 'thirdorder_potential_energy', total_configs)
-    call lo_h5_create_empty(cc%stat%fourthorder_potential_energy, filename, 'fourthorder_potential_energy', total_configs)
-    if (verbosity .gt. 0) write (*, *) '... created empty datasets'
-        
+    if (verbosity .gt. 0) write (*, *) '... wrote energies and metadata'       
     
     call h5%close_file()
     call h5%destroy(__FILE__, __LINE__)
@@ -425,39 +417,266 @@ subroutine write_hdf5_header(cc, uc, ss, filename, total_configs, verbosity)
 
 end subroutine write_hdf5_header
 
-subroutine append_to_hdf5(cc, uc, ss, filename, init, total_configs, offset, verbosity)
-    !> md simulation
-    class(lo_canonical_configs), intent(in) :: cc
-    !> unitcell
-    type(lo_crystalstructure), intent(in) :: uc
-    !> supercell
-    type(lo_crystalstructure), intent(inout) :: ss
-    !> filename
-    character(len=*), intent(in) :: filename
-    !> whether dataset has been initialized or not yet
-    logical, intent(in) :: init
-    !> total number of confings in final file
-    integer, intent(in) :: total_configs
-    !> where to append to in the file
-    integer, intent(in) :: offset
-    !> Talk a lot?
-    integer, intent(in) :: verbosity
+subroutine write_hdf5_mpi(cc, mw_comm, filename)
+  ! Parallel write of:
+  !   /header/* (small arrays; written by rank 1 only)
+  !   /data/positions   : real(r8) [3, NA, NT_global]
+  !   /data/velocities  : real(r8) [3, NA, NT_global]
+  !   /data/energies/*  : real(r8) [NT_global] (4 vectors)
+  !
+  ! Inputs:
+  !   mw_comm  : MPI communicator (e.g., MPI_COMM_WORLD)   [integer]
+  !   cc      : type(lo_canonical_configs) on each rank, holding this rank's local configs
+  !   filename : character(*) HDF5 output path
+  !
+  ! Layout/assumptions:
+  !   cc%r, cc%v :: shape (3, NA, NT_local_on_this_rank)
+  !   cc%stat%*   :: length NT_local_on_this_rank (same per-rank NT used for energies)
+  !
+  ! Rank 1 (zero-based) writes header data; adjust HEADER_RANK if needed.
+
+type(lo_canonical_configs), intent(in) :: cc
+  type(lo_mpi_helper), intent(in) :: mw_comm
+  character(len=*), intent(in) :: filename
 
 
-    type(lo_hdf5_helper) :: h5
+  ! Sizes (local/global) and offsets
+  integer :: na, nt_local, nt_global, offset_ccs
+  integer(hsize_t) :: dims_g3(3), dims_l3(3), start3(3), count3(3)
+  integer(hsize_t) :: dims_g1(1), dims_l1(1), start1(1), count1(1)
 
-    ! Initialize hdf5 properly
-    call h5%init(__FILE__, __LINE__)
+  ! HDF5 handles
+  integer(hid_t) :: fapl, file_id
+  integer(hid_t) :: grp_header, grp_data
+  integer(hid_t) :: dset_pos, dset_vel
+  integer(hid_t) :: dset_ke, dset_pe_dd, dset_pe_h2, dset_pe_h3, dset_pe_h4
+  integer(hid_t) :: filespace3, memspace3, filespace1, memspace1
+  integer(hid_t) :: dxpl
 
-    call lo_h5_append_data(filename, 'positions', cc%r, offset)
-    call lo_h5_append_data(filename, 'velocities', cc%v, offset)
-    call lo_h5_append_data(filename, 'polar_potential_energy', cc%stat%polar_potential_energy, offset)
-    call lo_h5_append_data(filename, 'secondorder_potential_energy', cc%stat%secondorder_potential_energy, offset)
-    call lo_h5_append_data(filename, 'thirdorder_potential_energy', cc%stat%thirdorder_potential_energy, offset)
-    call lo_h5_append_data(filename, 'fourthorder_potential_energy', cc%stat%fourthorder_potential_energy, offset)
+  integer :: h5err
 
-    call h5%destroy(__FILE__, __LINE__)
+  ! Convenience locals to header fields we’ll store (small demo subset)
+  integer(hid_t) :: dset_ucell_lv, dset_scell_lv, dset_atnums
+  integer(hsize_t) :: dims_2x(2), dims_1x(1)
 
-end subroutine
+
+  ! ===== Local sizes from the object on this rank =====
+  na       = cc%na
+  nt_local = cc%nt
+
+  ! Global NT and starting offset along config dimension
+  call MPI_Allreduce(nt_local, nt_global, 1, MPI_INTEGER, MPI_SUM, mw%comm, mw%error)
+  call MPI_Exscan(nt_local, offset_ccs, 1, MPI_INTEGER, MPI_SUM, mw%comm, mw%error)
+  if (mw%r == 0) offset_ccs = 0
+
+  ! ===== HDF5 setup =====
+  call h5open_f(h5err)
+
+  call h5pcreate_f(H5P_FILE_ACCESS_F, fapl, h5err)
+  call h5pset_fapl_mpio_f(fapl, mw%comm, MPI_INFO_NULL, h5err)
+
+  call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, h5err, access_prp=fapl)
+
+  ! Create groups collectively
+  call h5gcreate_f(file_id, "header", grp_header, h5err)
+  call h5gcreate_f(file_id, "data",   grp_data,   h5err)
+
+  ! ===== Header datasets (created collectively, written by HEADER_RANK only) =====
+  ! Example: unitcell/supercell lattice vectors and atomic numbers
+  if (allocated(cc%extra%unitcell_latticevectors)) then
+     dims_2x = (/ int(size(cc%extra%unitcell_latticevectors,1),HSIZE_T), &
+                  int(size(cc%extra%unitcell_latticevectors,2),HSIZE_T) /)
+     call h5screate_simple_f(2, dims_2x, filespace3, h5err)
+     call h5dcreate_f(grp_header, "unitcell_latticevectors", H5T_NATIVE_DOUBLE, filespace3, dset_ucell_lv, h5err)
+     call h5sclose_f(filespace3, h5err)
+  end if
+
+  if (allocated(cc%extra%supercell_latticevectors)) then
+     dims_2x = (/ int(size(cc%extra%supercell_latticevectors,1),HSIZE_T), &
+                  int(size(cc%extra%supercell_latticevectors,2),HSIZE_T) /)
+     call h5screate_simple_f(2, dims_2x, filespace3, h5err)
+     call h5dcreate_f(grp_header, "supercell_latticevectors", H5T_NATIVE_DOUBLE, filespace3, dset_scell_lv, h5err)
+     call h5sclose_f(filespace3, h5err)
+  end if
+
+  if (allocated(cc%atomic_numbers)) then
+     dims_1x = (/ int(size(cc%atomic_numbers,1),HSIZE_T) /)
+     call h5screate_simple_f(1, dims_1x, filespace1, h5err)
+     call h5dcreate_f(grp_header, "atomic_numbers", H5T_NATIVE_INTEGER, filespace1, dset_atnums, h5err)
+     call h5sclose_f(filespace1, h5err)
+  end if
+
+  ! Only HEADER_RANK writes the small header payloads
+  if (mw%talk) then
+     if (allocated(cc%extra%unitcell_latticevectors)) then
+        call h5dwrite_f(dset_ucell_lv, H5T_NATIVE_DOUBLE, cc%extra%unitcell_latticevectors, &
+                        shape(cc%extra%unitcell_latticevectors, kind=HSIZE_T), h5err)
+     end if
+     if (allocated(cc%extra%supercell_latticevectors)) then
+        call h5dwrite_f(dset_scell_lv, H5T_NATIVE_DOUBLE, cc%extra%supercell_latticevectors, &
+                        shape(cc%extra%supercell_latticevectors, kind=HSIZE_T), h5err)
+     end if
+     if (allocated(cc%atomic_numbers)) then
+        call h5dwrite_f(dset_atnums, H5T_NATIVE_INTEGER, cc%atomic_numbers, &
+                        (/ int(size(cc%atomic_numbers),HSIZE_T) /), h5err)
+     end if
+  end if
+
+  ! Close header datasets if they were created
+  if (allocated(cc%extra%unitcell_latticevectors)) call h5dclose_f(dset_ucell_lv, h5err)
+  if (allocated(cc%extra%supercell_latticevectors)) call h5dclose_f(dset_scell_lv, h5err)
+  if (allocated(cc%atomic_numbers))                call h5dclose_f(dset_atnums,   h5err)
+
+  call mw%barrier() ! ensure header is written before large dataset I/O
+
+  ! ===== Create global 3D datasets for positions/velocities (collective) =====
+  dims_g3 = (/ 3_hsize_t, int(na,HSIZE_T), int(nt_global,HSIZE_T) /)
+
+  call h5screate_simple_f(3, dims_g3, filespace3, h5err)
+  call h5dcreate_f(grp_data, "positions",  H5T_NATIVE_DOUBLE, filespace3, dset_pos, h5err)
+  call h5dclose_f(dset_pos, h5err)   ! close/reopen not needed, but free filespace3 reuse clarity
+  call h5sclose_f(filespace3, h5err)
+
+  call h5screate_simple_f(3, dims_g3, filespace3, h5err)
+  call h5dcreate_f(grp_data, "velocities", H5T_NATIVE_DOUBLE, filespace3, dset_vel, h5err)
+  call h5dclose_f(dset_vel, h5err)
+  call h5sclose_f(filespace3, h5err)
+
+  ! Energies (4 vectors) — create now
+  dims_g1 = (/ int(nt_global,HSIZE_T) /)
+  call h5screate_simple_f(1, dims_g1, filespace1, h5err)
+  call h5dcreate_f(grp_data, "kinetic_energy",            H5T_NATIVE_DOUBLE, filespace1, dset_ke,     h5err)
+  call h5dclose_f(dset_ke, h5err)
+  call h5dcreate_f(grp_data, "polar_potential_energy",    H5T_NATIVE_DOUBLE, filespace1, dset_pe_dd,  h5err)
+  call h5dclose_f(dset_pe_dd, h5err)
+  call h5dcreate_f(grp_data, "secondorder_potential_energy", H5T_NATIVE_DOUBLE, filespace1, dset_pe_h2, h5err)
+  call h5dclose_f(dset_pe_h2, h5err)
+  call h5dcreate_f(grp_data, "thirdorder_potential_energy",  H5T_NATIVE_DOUBLE, filespace1, dset_pe_h3, h5err)
+  call h5dclose_f(dset_pe_h3, h5err)
+  call h5dcreate_f(grp_data, "fourthorder_potential_energy", H5T_NATIVE_DOUBLE, filespace1, dset_pe_h4, h5err)
+  call h5sclose_f(filespace1, h5err)
+  call h5dclose_f(dset_pe_h4, h5err)
+
+  ! ===== Parallel writes (collective) for positions & velocities =====
+  ! Re-open datasets and set up collective xfer property
+  call h5dopen_f(grp_data, "positions",  dset_pos, h5err)
+  call h5dopen_f(grp_data, "velocities", dset_vel, h5err)
+
+  call h5pcreate_f(H5P_DATASET_XFER_F, dxpl, h5err)
+  call h5pset_dxpl_mpio_f(dxpl, H5FD_MPIO_COLLECTIVE_F, h5err)
+
+  ! File hyperslab: (0,0,offset) with count (3, NA, nt_local)
+  call h5dget_space_f(dset_pos, filespace3, h5err)
+  start3 = (/ 0_hsize_t, 0_hsize_t, int(offset_ccs,HSIZE_T) /)
+  count3 = (/ 3_hsize_t, int(na,HSIZE_T), int(nt_local,HSIZE_T) /)
+  call h5sselect_hyperslab_f(filespace3, H5S_SELECT_SET_F, start3, count3, h5err)
+
+  ! Memory dataspace: (3, NA, nt_local)
+  dims_l3 = count3
+  call h5screate_simple_f(3, dims_l3, memspace3, h5err)
+
+  ! Parallel write positions
+  if (nt_local > 0) then
+    call h5dwrite_f(dset_pos, H5T_NATIVE_DOUBLE, cc%r, dims_l3, h5err, &
+         file_space_id=filespace3, mem_space_id=memspace3, xfer_prp=dxpl)
+  else
+    ! zero-length selection is okay; still collective call
+    call h5dwrite_f(dset_pos, H5T_NATIVE_DOUBLE, cc%r, dims_l3, h5err, &
+         file_space_id=filespace3, mem_space_id=memspace3, xfer_prp=dxpl)
+  end if
+
+  ! Repeat for velocities
+  call h5sclose_f(filespace3, h5err)
+  call h5dget_space_f(dset_vel, filespace3, h5err)
+  start3 = (/ 0_hsize_t, 0_hsize_t, int(offset_ccs,HSIZE_T) /)
+  count3 = (/ 3_hsize_t, int(na,HSIZE_T), int(nt_local,HSIZE_T) /)
+  call h5sselect_hyperslab_f(filespace3, H5S_SELECT_SET_F, start3, count3, h5err)
+
+  ! Reuse memspace3
+  if (nt_local > 0) then
+    call h5dwrite_f(dset_vel, H5T_NATIVE_DOUBLE, cc%v, dims_l3, h5err, &
+         file_space_id=filespace3, mem_space_id=memspace3, xfer_prp=dxpl)
+  else
+    call h5dwrite_f(dset_vel, H5T_NATIVE_DOUBLE, cc%v, dims_l3, h5err, &
+         file_space_id=filespace3, mem_space_id=memspace3, xfer_prp=dxpl)
+  end if
+
+  call h5sclose_f(filespace3, h5err)
+  call h5sclose_f(memspace3,   h5err)
+  call h5dclose_f(dset_pos,    h5err)
+  call h5dclose_f(dset_vel,    h5err)
+
+  ! ===== Parallel writes for the four energy vectors =====
+  ! Reopen each vector dataset and write my [offset:offset+nt_local)
+  call h5dopen_f(grp_data, "kinetic_energy",                 dset_ke,    h5err)
+  call h5dopen_f(grp_data, "polar_potential_energy",         dset_pe_dd, h5err)
+  call h5dopen_f(grp_data, "secondorder_potential_energy",   dset_pe_h2, h5err)
+  call h5dopen_f(grp_data, "thirdorder_potential_energy",    dset_pe_h3, h5err)
+  call h5dopen_f(grp_data, "fourthorder_potential_energy",   dset_pe_h4, h5err)
+
+  dims_g1 = (/ int(nt_global,HSIZE_T) /)
+  dims_l1 = (/ int(nt_local,HSIZE_T) /)
+  start1  = (/ int(offset_ccs,HSIZE_T) /)
+  count1  = dims_l1
+
+  ! KE
+  call h5dget_space_f(dset_ke, filespace1, h5err)
+  call h5sselect_hyperslab_f(filespace1, H5S_SELECT_SET_F, start1, count1, h5err)
+  call h5screate_simple_f(1, dims_l1, memspace1, h5err)
+  call h5dwrite_f(dset_ke, H5T_NATIVE_DOUBLE, cc%stat%kinetic_energy, dims_l1, h5err, &
+       file_space_id=filespace1, mem_space_id=memspace1, xfer_prp=dxpl)
+  call h5sclose_f(filespace1, h5err)
+  call h5sclose_f(memspace1, h5err)
+
+  ! PE (dipole-dipole)
+  call h5dget_space_f(dset_pe_dd, filespace1, h5err)
+  call h5sselect_hyperslab_f(filespace1, H5S_SELECT_SET_F, start1, count1, h5err)
+  call h5screate_simple_f(1, dims_l1, memspace1, h5err)
+  call h5dwrite_f(dset_pe_dd, H5T_NATIVE_DOUBLE, cc%stat%polar_potential_energy, dims_l1, h5err, &
+       file_space_id=filespace1, mem_space_id=memspace1, xfer_prp=dxpl)
+  call h5sclose_f(filespace1, h5err)
+  call h5sclose_f(memspace1, h5err)
+
+  ! Harmonic 2nd order
+  call h5dget_space_f(dset_pe_h2, filespace1, h5err)
+  call h5sselect_hyperslab_f(filespace1, H5S_SELECT_SET_F, start1, count1, h5err)
+  call h5screate_simple_f(1, dims_l1, memspace1, h5err)
+  call h5dwrite_f(dset_pe_h2, H5T_NATIVE_DOUBLE, cc%stat%secondorder_potential_energy, dims_l1, h5err, &
+       file_space_id=filespace1, mem_space_id=memspace1, xfer_prp=dxpl)
+  call h5sclose_f(filespace1, h5err)
+  call h5sclose_f(memspace1, h5err)
+
+  ! 3rd order
+  call h5dget_space_f(dset_pe_h3, filespace1, h5err)
+  call h5sselect_hyperslab_f(filespace1, H5S_SELECT_SET_F, start1, count1, h5err)
+  call h5screate_simple_f(1, dims_l1, memspace1, h5err)
+  call h5dwrite_f(dset_pe_h3, H5T_NATIVE_DOUBLE, cc%stat%thirdorder_potential_energy, dims_l1, h5err, &
+       file_space_id=filespace1, mem_space_id=memspace1, xfer_prp=dxpl)
+  call h5sclose_f(filespace1, h5err)
+  call h5sclose_f(memspace1, h5err)
+
+  ! 4th order
+  call h5dget_space_f(dset_pe_h4, filespace1, h5err)
+  call h5sselect_hyperslab_f(filespace1, H5S_SELECT_SET_F, start1, count1, h5err)
+  call h5screate_simple_f(1, dims_l1, memspace1, h5err)
+  call h5dwrite_f(dset_pe_h4, H5T_NATIVE_DOUBLE, cc%stat%fourthorder_potential_energy, dims_l1, h5err, &
+       file_space_id=filespace1, mem_space_id=memspace1, xfer_prp=dxpl)
+  call h5sclose_f(filespace1, h5err)
+  call h5sclose_f(memspace1, h5err)
+
+  call h5dclose_f(dset_ke,    h5err)
+  call h5dclose_f(dset_pe_dd, h5err)
+  call h5dclose_f(dset_pe_h2, h5err)
+  call h5dclose_f(dset_pe_h3, h5err)
+  call h5dclose_f(dset_pe_h4, h5err)
+
+  ! ===== Tear down =====
+  call h5pclose_f(dxpl, h5err)
+  call h5gclose_f(grp_data,   h5err)
+  call h5gclose_f(grp_header, h5err)
+  call h5fclose_f(file_id,    h5err)
+  call h5pclose_f(fapl,       h5err)
+  call h5close_f(h5err)
+end subroutine write_hdf5_mpi
 
 end module

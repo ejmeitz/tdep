@@ -118,9 +118,9 @@ init: block
             end if
 
             call cc%init_empty(uc, ss, local_nconf, opts%temperature)
-            if (mw%talk) then
-                call cc%write_hdf5_header(uc, ss, 'outfile.canonical_configs.hdf5', opts%nconf, opts%verbosity)
-            end if
+            ! if (mw%talk) then
+            !     call cc%write_hdf5_header(uc, ss, 'outfile.canonical_configs.hdf5', opts%nconf, opts%verbosity)
+            ! end if
         end if
     end if
 
@@ -151,30 +151,8 @@ energy : block
             call pot%statistical_sampling(uc, ss, fc2, opts%nconf, opts%temperature, opts%quantum, ebuf, mw, mem, opts%verbosity)
         end if
 
-        if (opts%dumpconfigs) then
 
-            call mw%barrier('main.f90', 155)
-
-            !> Each rank appends in order (sequential)
-            do write_rank = 0, mw%n - 1
-                if (mw%r == write_rank) then
-                    
-                    ! Calculate where this rank's data should go
-                    !> HOW TO DO THSI ROBUSTLY? NOT ALL RANKS GURANTEED SAME SIZE
-                    global_offset = mw%r * cc%nt ! NOT GENERICALLY CORRECT
-                    
-                    ! Append this rank's data
-                    call lo_h5_append_data('outfile.canonical_configs.hdf5', 'positions', cc%r, global_offset)
-                    call lo_h5_append_data('outfile.canonical_configs.hdf5', 'velocities', cc%v, global_offset)
-
-                    !TODO APPEND ENERGIES
-
-                end if
-                
-                ! Ensure this rank finishes before next rank starts
-                call mw%barrier('main.f90', 178)
-            end do
-        end if
+        call cc%write_hdf5_mpi(mw, 'outfile.canonical_configs.hdf5')
 
     else
 

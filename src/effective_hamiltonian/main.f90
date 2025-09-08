@@ -112,14 +112,10 @@ init: block
         if (opts%dumpconfigs) then
             ! Calculate local number of configurations for this rank
             local_nconf = opts%nconf / mw%n
-            if (mw%r < mod(opts%nconf, mw%n)) then
-                local_nconf = local_nconf + 1
-            end if
+            if (mw%r < mod(opts%nconf, mw%n)) local_nconf = local_nconf + 1  
 
             call cc%init_empty(uc, ss, local_nconf, opts%temperature)
-            ! if (mw%talk) then
-            !     call cc%write_hdf5_header(uc, ss, 'outfile.canonical_configs.hdf5', opts%nconf, opts%verbosity)
-            ! end if
+
         end if
     end if
 

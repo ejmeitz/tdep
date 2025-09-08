@@ -84,7 +84,6 @@ module lo_epot
         do i = 1, nstep
 
             if (mod(i, mw%n) .ne. mw%r) cycle
-            ctr = ctr + 1
 
             ! Reset structure
             p%u = 0.0_r8
@@ -105,6 +104,7 @@ module lo_epot
 
             if (present(cc)) then
                 call cc%set_step(p%r, p%v, ek*p%na, ep, e2, e3, e4, ctr)
+                ctr = ctr + 1
             end if
             
         end do

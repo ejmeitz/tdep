@@ -249,9 +249,7 @@ subroutine init_empty(cc, uc, ss, nstep, temperature)
         cc%v = 0.0_r8
 
         if (cc%alloy) then
-            !lo_allocate(cc%r_ref(3, cc%na, nstep))
             lo_allocate(cc%atomic_numbers(cc%na))
-            !cc%r_ref = 0.0_r8
             cc%atomic_numbers = 0
         end if
     end block trajectories
@@ -436,7 +434,6 @@ end subroutine write_hdf5_header
 !>   cc%r, cc%v :: shape (3, NA, NT_local_on_this_rank)
 !>   cc%stat%*   :: length NT_local_on_this_rank (same per-rank NT used for energies)
 !>
-!> Rank 1 (zero-based) writes header data; adjust HEADER_RANK if needed.
 subroutine write_hdf5_mpi(cc, mw, filename)
 
   class(lo_canonical_configs), intent(in) :: cc

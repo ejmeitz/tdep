@@ -80,9 +80,9 @@ module lo_epot
         f4 = 0.0_r8
         fp = 0.0_r8
         
-        ctr = 1
+        ctr = 0
         do i = 1, nstep
-
+            ctr = ctr + 1
             if (mod(i, mw%n) .ne. mw%r) cycle
 
             ! Reset structure
@@ -94,17 +94,17 @@ module lo_epot
             ! Calculate the energy
             call pot%energies_and_forces(p%u, e2, e3, e4, ep, f2, f3, f4, fp)
 
-            ek = p%kinetic_energy()/(p%na)
+            ek = p%kinetic_energy()
 
             ebuf(i, 1) = e2
             ebuf(i, 2) = e3
             ebuf(i, 3) = e4
             ebuf(i, 4) = ep 
-            ebuf(i, 5) = ek*p%na         
+            ebuf(i, 5) = ek        
 
             if (present(cc)) then
-                call cc%set_step(p%r, p%v, ek*p%na, ep, e2, e3, e4, ctr)
-                ctr = ctr + 1
+                ! pre-allocated assuming round-robin parallelization strategy
+                call cc%set_step(p%r, p%v, ek, ep, e2, e3, e4, ctr)
             end if
             
         end do

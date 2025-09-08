@@ -417,6 +417,22 @@ subroutine write_hdf5_header(cc, uc, ss, filename, total_configs, verbosity)
 
 end subroutine write_hdf5_header
 
+!> Parallel write of:
+!>   /header/... (small arrays; written by rank 1 only)
+!>   /data/positions   : real(r8) [3, NA, NT_global]
+!>   /data/velocities  : real(r8) [3, NA, NT_global]
+!>   /data/energies/...  : real(r8) [NT_global] (4 vectors)
+!>
+!> Inputs:
+!>   mw_comm  : MPI communicator (e.g., MPI_COMM_WORLD)   [integer]
+!>   cc      : type(lo_canonical_configs) on each rank, holding this rank's local configs
+!>   filename : character(*) HDF5 output path
+!>
+!> Layout/assumptions:
+!>   cc%r, cc%v :: shape (3, NA, NT_local_on_this_rank)
+!>   cc%stat%*   :: length NT_local_on_this_rank (same per-rank NT used for energies)
+!>
+!> Rank 1 (zero-based) writes header data; adjust HEADER_RANK if needed.
 subroutine write_hdf5_mpi(cc, mw, filename)
 
   type(lo_canonical_configs), intent(in) :: cc
@@ -426,22 +442,22 @@ subroutine write_hdf5_mpi(cc, mw, filename)
 
   ! Sizes (local/global) and offsets
   integer :: na, nt_local, nt_global, offset_ccs
-  integer(hsize_t) :: dims_g3(3), dims_l3(3), start3(3), count3(3)
-  integer(hsize_t) :: dims_g1(1), dims_l1(1), start1(1), count1(1)
+  integer(HSIZE_T) :: dims_g3(3), dims_l3(3), start3(3), count3(3)
+  integer(HSIZE_T) :: dims_g1(1), dims_l1(1), start1(1), count1(1)
 
   ! HDF5 handles
-  integer(hid_t) :: fapl, file_id
-  integer(hid_t) :: grp_header, grp_data
-  integer(hid_t) :: dset_pos, dset_vel
-  integer(hid_t) :: dset_ke, dset_pe_dd, dset_pe_h2, dset_pe_h3, dset_pe_h4
-  integer(hid_t) :: filespace3, memspace3, filespace1, memspace1
-  integer(hid_t) :: dxpl
+  integer(HID_T) :: fapl, file_id
+  integer(HID_T) :: grp_header, grp_data
+  integer(HID_T) :: dset_pos, dset_vel
+  integer(HID_T) :: dset_ke, dset_pe_dd, dset_pe_h2, dset_pe_h3, dset_pe_h4
+  integer(HID_T) :: filespace3, memspace3, filespace1, memspace1
+  integer(HID_T) :: dxpl
 
   integer :: h5err
 
   ! Convenience locals to header fields we’ll store (small demo subset)
-  integer(hid_t) :: dset_ucell_lv, dset_scell_lv, dset_atnums
-  integer(hsize_t) :: dims_2x(2), dims_1x(1)
+  integer(HID_T) :: dset_ucell_lv, dset_scell_lv, dset_atnums
+  integer(HSIZE_T) :: dims_2x(2), dims_1x(1)
 
 
   ! ===== Local sizes from the object on this rank =====

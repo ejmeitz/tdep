@@ -125,7 +125,7 @@ init: block
                 if (sum_local /= opts%nconf) then
                     write(*,*) "ERROR: mismatch in config counts!"
                     write(*,*) "  expected =", opts%nconf, "  got sum(local_nconf) =", sum_local
-                    call MPI_Abort(mw%comm, 123, ierr)
+                    call MPI_Abort(mw%comm, 123, mw%error)
                 else
                     write(*,*) "Sanity check passed: total configs =", sum_local
                 end if

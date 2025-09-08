@@ -13,7 +13,6 @@ use type_forceconstant_thirdorder, only: lo_forceconstant_thirdorder
 use type_forceconstant_fourthorder, only: lo_forceconstant_fourthorder
 use type_canonical_configs, only: lo_canonical_configs
 use type_mdsim, only: lo_mdsim
-use hdf5_wrappers, only: lo_h5_append_data
 
 
 use lo_epot, only: lo_energy_differences

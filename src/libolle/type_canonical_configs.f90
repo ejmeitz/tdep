@@ -457,7 +457,7 @@ subroutine write_hdf5_mpi(cc, mw, filename)
   integer(HID_T) :: filespace3, memspace3, filespace1, memspace1
   integer(HID_T) :: dxpl
 
-  integer :: h5err
+  integer :: h5err, p 
 
   ! Convenience locals to header fields we’ll store (small demo subset)
   integer(HID_T) :: dset_ucell_lv, dset_scell_lv, dset_atnums

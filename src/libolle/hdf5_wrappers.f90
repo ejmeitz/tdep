@@ -100,18 +100,6 @@ type lo_hdf5_helper
         procedure, nopass, private :: store_float_2D_as_attribute
         procedure, nopass, private :: store_logical_as_attribute
         procedure, nopass, private :: store_char_as_attribute
-
-        ! append data
-        generic :: append_data=>append_double_1D_array_as_data,&
-                                   append_double_3D_array_as_data
-        procedure, nopass, private :: append_double_1D_array_as_data
-        procedure, nopass, private :: append_double_3D_array_as_data
-
-        ! create empty datasets
-        generic :: create_empty=>create_empty_double_1D,&
-                                   create_empty_double_3D
-        procedure, nopass, private :: create_empty_double_1D
-        procedure, nopass, private :: create_empty_double_3D
 end type
 
 !> interface to write simple things as attributes

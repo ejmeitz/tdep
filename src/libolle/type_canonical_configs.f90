@@ -110,13 +110,16 @@ subroutine set_step(cc, positions, velocities, kinetic_energy, ep, e2, e3, e4, i
     integer, intent(in) :: idx
 
     integer :: tmax
+    character(len=*), intent(in) :: msg
 
     ! Max number of timesteps
     tmax = size(cc%r, 3)
 
     ! Sanity tests
-    if (idx .gt. tmax) then
-        call lo_stop_gracefully(['Not enough space to store timestep. Initialize canonical_config storage with more space.'], lo_exitcode_param, __FILE__, __LINE__)
+    if ((idx .lt. 1) .or. (idx .gt. tmax)) then
+        write(msg,'(A," idx=",I0,", tmax=",I0," (valid: 1..tmax)")') &
+        'Not enough space to store timestep.', idx, tmax
+        call lo_stop_gracefully([trim(msg)], lo_exitcode_param, __FILE__, __LINE__)
     end if
 
     ! Start storing things

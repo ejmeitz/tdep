@@ -80,7 +80,7 @@ module lo_epot
         f4 = 0.0_r8
         fp = 0.0_r8
         
-        ctr = 0
+        ctr = 1
         do i = 1, nstep
 
             if (mod(i, mw%n) .ne. mw%r) cycle

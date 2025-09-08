@@ -131,7 +131,7 @@ end block init
 
 energy : block
 
-    integer :: i, u, ierr, write_rank
+    integer :: i, u, ierr
     real(r8), dimension(:, :), allocatable :: f2, f3, f4, fp
     real(r8) :: e2, e3, e4, ep, total_energy, to_ev_per_atom
     character(len=100) :: filename

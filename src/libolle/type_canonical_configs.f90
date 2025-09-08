@@ -713,6 +713,15 @@ subroutine write_hdf5_mpi(cc, mw, filename)
   na       = cc%na
   nt_local = cc%nt
 
+  do p = 0, nprocs-1
+    if (mw%r == p) then
+        write(*,'(A,I0,3(A,I0))') 'rank ', mw%r, &
+            '  na=', na, '  nt_local=', nt_local, '  offset=', offset_ccs
+        call flush(6)   ! or: use iso_fortran_env and flush(output_unit)
+    end if
+    call mw%barrier()
+    end do
+
   ! Global NT and offset along config dimension
   call MPI_Allreduce(nt_local, nt_global, 1, MPI_INTEGER, MPI_SUM, mw%comm, mw%error)
   call MPI_Exscan(nt_local, offset_ccs, 1, MPI_INTEGER, MPI_SUM, mw%comm, mw%error)

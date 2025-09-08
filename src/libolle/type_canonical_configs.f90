@@ -8,6 +8,7 @@ use gottochblandat, only: open_file, tochar, walltime
 use mpi_wrappers, only:  lo_stop_gracefully
 use hdf5_wrappers, only: lo_hdf5_helper, lo_h5_store_attribute, lo_h5_store_data
 use type_crystalstructure, only: lo_crystalstructure
+use hdf5
 
 implicit none
 private
@@ -436,7 +437,7 @@ end subroutine write_hdf5_header
 subroutine write_hdf5_mpi(cc, mw, filename)
 
   type(lo_canonical_configs), intent(in) :: cc
-  type(lo_mpi_helper), intent(in) :: mw
+  type(lo_mpi_helper), intent(inout) :: mw
   character(len=*), intent(in) :: filename
 
 

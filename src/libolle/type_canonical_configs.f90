@@ -5,7 +5,7 @@ use konstanter, only: r8, lo_pi, lo_huge, lo_hugeint, lo_sqtol, lo_status, &
                       lo_exitcode_param, lo_bohr_to_A, lo_Hartree_to_eV, &
                       lo_exitcode_io, lo_velocity_au_to_Afs
 use gottochblandat, only: open_file, tochar, walltime 
-use mpi_wrappers, only:  lo_mpi_helper, lo_stop_gracefully
+use mpi_wrappers, only:  lo_mpi_helper, lo_stop_gracefully, MPI_SUM, MPI_INTEGER, MPI_INFO_NULL
 use hdf5_wrappers, only: lo_hdf5_helper, lo_h5_store_attribute, lo_h5_store_data
 use type_crystalstructure, only: lo_crystalstructure
 use hdf5
@@ -436,7 +436,7 @@ end subroutine write_hdf5_header
 !> Rank 1 (zero-based) writes header data; adjust HEADER_RANK if needed.
 subroutine write_hdf5_mpi(cc, mw, filename)
 
-  type(lo_canonical_configs), intent(in) :: cc
+  class(lo_canonical_configs), intent(in) :: cc
   type(lo_mpi_helper), intent(inout) :: mw
   character(len=*), intent(in) :: filename
 

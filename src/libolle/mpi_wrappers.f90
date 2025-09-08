@@ -16,6 +16,7 @@ public :: lo_stop_gracefully
 ! Expose some MPI constants, in case someone needs them
 public :: MPI_CHARACTER,MPI_DOUBLE_COMPLEX,MPI_DOUBLE_PRECISION,MPI_INTEGER,MPI_LOGICAL
 public :: MPI_MAX,MPI_MIN,MPI_SUM,MPI_IN_PLACE,MPI_ANY_TAG
+public :: MPI_INFO_NULL
 
 !> Helper that keeps track of all things MPI.
 type lo_mpi_helper

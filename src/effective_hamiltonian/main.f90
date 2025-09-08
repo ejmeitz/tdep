@@ -3,7 +3,7 @@ program effective_hamiltonian
 !!{!src/effective_hamiltonian/manual.md!}
 use konstanter, only: r8, lo_tol, lo_kb_hartree, lo_bohr_to_A, lo_frequency_Hartree_to_THz, lo_eV_to_Hartree, &
                       lo_exitcode_physical, lo_exitcode_param, lo_temperaturetol, lo_Hartree_to_eV
-use mpi_wrappers, only: lo_mpi_helper
+use mpi_wrappers, only: lo_mpi_helper, MPI_SUM, MPI_INTEGER
 use lo_memtracker, only: lo_mem_helper
 use gottochblandat, only: tochar, walltime, lo_stop_gracefully, open_file, lo_progressbar_init, &
                             lo_progressbar, lo_does_file_exist, lo_trueNtimes, lo_mean
@@ -46,7 +46,7 @@ call mem%init()
 
 init: block
 
-    integer :: f, i, j, l, readrank, local_nconf
+    integer :: f, i, j, l, readrank, local_nconf, sum_local
     logical :: readonthisrank, mpiparallel
     real(r8) :: t0
 
@@ -112,14 +112,26 @@ init: block
         if (opts%dumpconfigs) then
             ! Calculate local number of configurations for this rank
             ! Assumes round-robin parallelization
-            if (ops%nconf - mw%r > 0) then
-                local_nconf = (ops%nconf - mw%r + mw%n - 1) / mw%n       ! ceil((ops%nconf - mw%r)/mw%n)
+            if (opts%nconf - mw%r > 0) then
+                local_nconf = (opts%nconf - mw%r + mw%n - 1) / mw%n       ! ceil((ops%nconf - mw%r)/mw%n)
             else
                 local_nconf = 0
             end if
 
             ! sanity check
+            call MPI_Allreduce(local_nconf, sum_local, 1, MPI_INTEGER, MPI_SUM, mw%comm, mw%error)
             
+            if (mw%r == 0) then
+                if (sum_local /= opts%nconf) then
+                    write(*,*) "ERROR: mismatch in config counts!"
+                    write(*,*) "  expected =", opts%nconf, "  got sum(local_nconf) =", sum_local
+                    call MPI_Abort(mw%comm, 123, ierr)
+                else
+                    write(*,*) "Sanity check passed: total configs =", sum_local
+                end if
+            end if
+
+
 
             call cc%init_empty(uc, ss, local_nconf, opts%temperature)
 

@@ -707,13 +707,13 @@ subroutine write_hdf5_mpi(cc, mw, filename)
   integer(HID_T)   :: dcpl3, dcpl1
   integer(HSIZE_T) :: chunk3(3), chunk1(1)
   logical          :: have_deflate
-  integer          :: h5err, h5err2
+  integer          :: h5err, h5err2, p
 
   ! ===== Local sizes on this rank =====
   na       = cc%na
   nt_local = cc%nt
 
-  do p = 0, nprocs-1
+  do p = 0, nw%n-1
     if (mw%r == p) then
         write(*,'(A,I0,3(A,I0))') 'rank ', mw%r, &
             '  na=', na, '  nt_local=', nt_local, '  offset=', offset_ccs

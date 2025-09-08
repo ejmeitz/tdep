@@ -9,6 +9,7 @@ use mpi_wrappers, only:  lo_mpi_helper, lo_stop_gracefully, MPI_SUM, MPI_INTEGER
 use hdf5_wrappers, only: lo_hdf5_helper, lo_h5_store_attribute, lo_h5_store_data
 use type_crystalstructure, only: lo_crystalstructure
 use hdf5
+use mpi
 
 implicit none
 private
@@ -681,13 +682,9 @@ end subroutine write_hdf5_header
 ! end subroutine write_hdf5_mpi
 
 subroutine write_hdf5_mpi(cc, mw, filename)
-  use mpi
-  use hdf5
-  implicit none
-
-  type(lo_canonical_configs), intent(in) :: cc
-  type(lo_mpi_helper),       intent(in) :: mw
-  character(len=*),          intent(in) :: filename
+  class(lo_canonical_configs), intent(in) :: cc
+  type(lo_mpi_helper), intent(inout) :: mw
+  character(len=*), intent(in) :: filename
 
   ! Sizes (local/global) and offsets
   integer :: na, nt_local, nt_global, offset_ccs

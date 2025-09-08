@@ -147,12 +147,10 @@ energy : block
 
         if (opts%dumpconfigs) then
             call pot%statistical_sampling(uc, ss, fc2, opts%nconf, opts%temperature, opts%quantum, ebuf, mw, mem, opts%verbosity, cc)
+            call cc%write_hdf5_mpi(mw, 'outfile.canonical_configs.hdf5')
         else
             call pot%statistical_sampling(uc, ss, fc2, opts%nconf, opts%temperature, opts%quantum, ebuf, mw, mem, opts%verbosity)
         end if
-
-
-        call cc%write_hdf5_mpi(mw, 'outfile.canonical_configs.hdf5')
 
     else
 

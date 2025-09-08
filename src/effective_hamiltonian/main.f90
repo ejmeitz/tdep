@@ -121,17 +121,13 @@ init: block
             ! sanity check
             call MPI_Allreduce(local_nconf, sum_local, 1, MPI_INTEGER, MPI_SUM, mw%comm, mw%error)
             
-            if (mw%r == 0) then
+            if (mw%talk) then
                 if (sum_local /= opts%nconf) then
                     write(*,*) "ERROR: mismatch in config counts!"
                     write(*,*) "  expected =", opts%nconf, "  got sum(local_nconf) =", sum_local
                     call MPI_Abort(mw%comm, 123, mw%error)
-                else
-                    write(*,*) "Sanity check passed: total configs =", sum_local
                 end if
             end if
-
-
 
             call cc%init_empty(uc, ss, local_nconf, opts%temperature)
 

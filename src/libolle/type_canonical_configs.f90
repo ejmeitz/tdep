@@ -417,22 +417,6 @@ subroutine write_hdf5_header(cc, uc, ss, filename, total_configs, verbosity)
 
 end subroutine write_hdf5_header
 
-!> Parallel write of:
-!>   /header/* (small arrays; written by rank 1 only)
-!>   /data/positions   : real(r8) [3, NA, NT_global]
-!>   /data/velocities  : real(r8) [3, NA, NT_global]
-!>   /data/energies/*  : real(r8) [NT_global] (4 vectors)
-!>
-!> Inputs:
-!>   mw_comm  : MPI communicator (e.g., MPI_COMM_WORLD)   [integer]
-!>   cc      : type(lo_canonical_configs) on each rank, holding this rank's local configs
-!>   filename : character(*) HDF5 output path
-!>
-!> Layout/assumptions:
-!>   cc%r, cc%v :: shape (3, NA, NT_local_on_this_rank)
-!>   cc%stat%*   :: length NT_local_on_this_rank (same per-rank NT used for energies)
-!>
-!> Rank 1 (zero-based) writes header data; adjust HEADER_RANK if needed.
 subroutine write_hdf5_mpi(cc, mw, filename)
 
   type(lo_canonical_configs), intent(in) :: cc

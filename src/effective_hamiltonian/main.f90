@@ -112,13 +112,14 @@ init: block
         if (opts%dumpconfigs) then
             ! Calculate local number of configurations for this rank
             ! Assumes round-robin parallelization
-            if (mw%r == 0) then
-                local_nconf = opts%nconf / mw%n
-            else if (mw%r <= opts%nconf) then
-                local_nconf = (opts%nconf - mw%r) / mw%n + 1
+            if (ops%nconf - mw%r > 0) then
+                local_nconf = (ops%nconf - mw%r + mw%n - 1) / mw%n       ! ceil((ops%nconf - mw%r)/mw%n)
             else
                 local_nconf = 0
-            end if 
+            end if
+
+            ! sanity check
+            
 
             call cc%init_empty(uc, ss, local_nconf, opts%temperature)
 

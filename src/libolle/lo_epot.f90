@@ -82,8 +82,9 @@ module lo_epot
         
         ctr = 0
         do i = 1, nstep
+            
+            if (mod(i-1, mw%n) /= mw%r) cycle
             ctr = ctr + 1
-            if (mod(i, mw%n) .ne. mw%r) cycle
 
             ! Reset structure
             p%u = 0.0_r8

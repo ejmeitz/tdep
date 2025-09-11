@@ -549,9 +549,9 @@ subroutine write_hdf5_mpi(cc, uc, ss, mw, filename)
   end if
 
   ! Close header datasets if they were created
-  if (allocated(cc%extra%unitcell_latticevectors)) call h5dclose_f(dset_ucell_lv, h5err)
-  if (allocated(cc%extra%supercell_latticevectors)) call h5dclose_f(dset_scell_lv, h5err)
-  if (allocated(cc%atomic_numbers))                call h5dclose_f(dset_atnums,   h5err)
+!   if (allocated(cc%extra%unitcell_latticevectors)) call h5dclose_f(dset_ucell_lv, h5err)
+!   if (allocated(cc%extra%supercell_latticevectors)) call h5dclose_f(dset_scell_lv, h5err)
+!   if (allocated(cc%atomic_numbers))                call h5dclose_f(dset_atnums,   h5err)
 
   call mw%barrier() ! ensure header is written before large dataset I/O
 

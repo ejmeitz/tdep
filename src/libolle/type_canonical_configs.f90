@@ -516,14 +516,12 @@ subroutine write_hdf5_mpi(cc, uc, ss, mw, filename)
   ! define positions dataset
   call h5screate_simple_f(3, dims_g3, filespace3, h5err)
   call h5dcreate_f(file_id, "positions",  H5T_NATIVE_DOUBLE, filespace3, dset_pos, h5err, dcpl)
-  if (mw%talk) call lo_h5_store_attribute(trim('A'), dset_pos, 'unit', lo_status)
   call h5dclose_f(dset_pos, h5err) 
   call h5sclose_f(filespace3, h5err)
 
   ! define velocities dataset
   call h5screate_simple_f(3, dims_g3, filespace3, h5err)
   call h5dcreate_f(file_id, "velocities", H5T_NATIVE_DOUBLE, filespace3, dset_vel, h5err, dcpl)
-  if (mw%talk) call lo_h5_store_attribute(trim('A/fs'), dset_vel, 'unit', lo_status)
   call h5dclose_f(dset_vel, h5err)
   call h5sclose_f(filespace3, h5err)
 
@@ -533,19 +531,14 @@ subroutine write_hdf5_mpi(cc, uc, ss, mw, filename)
   dims_g1 = (/ int(nt_global,HSIZE_T) /)
   call h5screate_simple_f(1, dims_g1, filespace1, h5err)
   call h5dcreate_f(file_id, "kinetic_energy",            H5T_NATIVE_DOUBLE, filespace1, dset_ke,     h5err)
-  if (mw%talk) call lo_h5_store_attribute(trim('eV'), dset_ke, 'unit', lo_status)
   call h5dclose_f(dset_ke, h5err)
   call h5dcreate_f(file_id, "polar_potential_energy",    H5T_NATIVE_DOUBLE, filespace1, dset_pe_dd,  h5err)
-  if (mw%talk) call lo_h5_store_attribute(trim('eV'), dset_pe_dd, 'unit', lo_status)
   call h5dclose_f(dset_pe_dd, h5err)
   call h5dcreate_f(file_id, "secondorder_potential_energy", H5T_NATIVE_DOUBLE, filespace1, dset_pe_h2, h5err)
-  if (mw%talk) call lo_h5_store_attribute(trim('eV'), dset_pe_h2, 'unit', lo_status)
   call h5dclose_f(dset_pe_h2, h5err)
   call h5dcreate_f(file_id, "thirdorder_potential_energy",  H5T_NATIVE_DOUBLE, filespace1, dset_pe_h3, h5err)
-  if (mw%talk) call lo_h5_store_attribute(trim('eV'), dset_pe_h3, 'unit', lo_status)
   call h5dclose_f(dset_pe_h3, h5err)
   call h5dcreate_f(file_id, "fourthorder_potential_energy", H5T_NATIVE_DOUBLE, filespace1, dset_pe_h4, h5err)
-  if (mw%talk) call lo_h5_store_attribute(trim('eV'), dset_pe_h4, 'unit', lo_status)
   call h5sclose_f(filespace1, h5err)
   call h5dclose_f(dset_pe_h4, h5err)
 
@@ -667,6 +660,53 @@ subroutine write_hdf5_mpi(cc, uc, ss, mw, filename)
   call h5fclose_f(file_id,    h5err)
   call h5pclose_f(fapl,       h5err)
   call h5close_f(h5err)
+
+  call mw%barrier()
+
+  ! Add some attributes to the data
+  if (mw%talk) then
+    call h5open_f(h5err)
+    call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, h5err)
+    
+    ! Positions
+    call h5dopen_f(file_id, "positions", dset_pos, h5err)
+    call lo_h5_store_attribute('A', dset_pos, 'unit', h5err)
+    call h5dclose_f(dset_pos, h5err)
+    
+    ! Velocities  
+    call h5dopen_f(file_id, "velocities", dset_vel, h5err)
+    call lo_h5_store_attribute('A/fs', dset_vel, 'unit', h5err)
+    call h5dclose_f(dset_vel, h5err)
+    
+    ! Kinetic energy
+    call h5dopen_f(file_id, "kinetic_energy", dset_ke, h5err)
+    call lo_h5_store_attribute('eV', dset_ke, 'unit', h5err)
+    call h5dclose_f(dset_ke, h5err)
+    
+    ! Polar potential energy
+    call h5dopen_f(file_id, "polar_potential_energy", dset_pe_dd, h5err)
+    call lo_h5_store_attribute('eV', dset_pe_dd, 'unit', h5err)
+    call h5dclose_f(dset_pe_dd, h5err)
+    
+    ! Second order potential energy
+    call h5dopen_f(file_id, "secondorder_potential_energy", dset_pe_h2, h5err)
+    call lo_h5_store_attribute('eV', dset_pe_h2, 'unit', h5err)
+    call h5dclose_f(dset_pe_h2, h5err)
+    
+    ! Third order potential energy
+    call h5dopen_f(file_id, "thirdorder_potential_energy", dset_pe_h3, h5err)
+    call lo_h5_store_attribute('eV', dset_pe_h3, 'unit', h5err)
+    call h5dclose_f(dset_pe_h3, h5err)
+    
+    ! Fourth order potential energy
+    call h5dopen_f(file_id, "fourthorder_potential_energy", dset_pe_h4, h5err)
+    call lo_h5_store_attribute('eV', dset_pe_h4, 'unit', h5err)
+    call h5dclose_f(dset_pe_h4, h5err)
+    
+    call h5fclose_f(file_id, h5err)
+    call h5close_f(h5err)
+  end if
+
 end subroutine write_hdf5_mpi
 
 end module

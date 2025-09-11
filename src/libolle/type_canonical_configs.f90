@@ -447,6 +447,7 @@ subroutine write_hdf5_mpi(cc, uc, ss, mw, filename)
   type(lo_mpi_helper), intent(inout) :: mw
   character(len=*), intent(in) :: filename
 
+  type(lo_hdf5_helper) :: h5
 
   ! Sizes (local/global) and offsets
   integer :: na, nt_local, nt_global, offset_ccs
@@ -477,14 +478,14 @@ subroutine write_hdf5_mpi(cc, uc, ss, mw, filename)
   call MPI_Exscan(nt_local, offset_ccs, 1, MPI_INTEGER, MPI_SUM, mw%comm, mw%error)
   if (mw%r == 0) offset_ccs = 0
 
-  do p = 0, mw%n-1
-    if (mw%r == p) then
-        write(*,'(A,I0,3(A,I0))') 'rank ', mw%r, &
-            '  na=', na, '  nt_local=', nt_local, '  offset=', offset_ccs
-        flush(6)
-    end if
-    call mw%barrier()
-  end do
+!   do p = 0, mw%n-1
+!     if (mw%r == p) then
+!         write(*,'(A,I0,3(A,I0))') 'rank ', mw%r, &
+!             '  na=', na, '  nt_local=', nt_local, '  offset=', offset_ccs
+!         flush(6)
+!     end if
+!     call mw%barrier()
+!   end do
 
   ! WRITE HEADER BEFORE INITIALIZING PARALLEL HDF5 !
    if (mw%talk) then

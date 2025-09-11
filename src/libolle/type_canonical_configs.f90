@@ -500,6 +500,8 @@ subroutine write_hdf5_mpi(cc, uc, ss, mw, filename)
     call h5%destroy(__FILE__, __LINE__)
   end if
 
+  call mw%barrier()
+
   ! ===== HDF5 setup =====
   call h5open_f(h5err)
 

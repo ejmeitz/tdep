@@ -104,8 +104,7 @@ module lo_epot
             ebuf(i, 5) = ek        
 
             if (present(cc)) then
-                ! pre-allocated assuming round-robin parallelization strategy
-                call cc%set_step(p%r, p%v, ek, ep, e2, e3, e4, ctr)
+                call cc%set_step(p%rcart, p%v, ek, ep, e2, e3, e4, ctr)
             end if
             
         end do

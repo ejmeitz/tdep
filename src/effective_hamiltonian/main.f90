@@ -110,8 +110,9 @@ init: block
         if (mw%talk) write (*, *) '... parsed simulation data'
     else
         if (opts%dumpconfigs) then
-            ! Calculate local number of configurations for this rank
-            ! Assumes round-robin parallelization
+
+            ! figure out how many configuratoins this rank is responsible for calculating
+            ! this is based on parallelization strategy in lo_epot statistical_sampling
             if (opts%nconf - mw%r > 0) then
                 local_nconf = (opts%nconf - mw%r + mw%n - 1) / mw%n       ! ceil((ops%nconf - mw%r)/mw%n)
             else
@@ -135,8 +136,6 @@ init: block
     end if
 
 end block init
-
-
 
 
 energy : block

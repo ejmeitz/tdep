@@ -486,6 +486,20 @@ subroutine write_hdf5_mpi(cc, uc, ss, mw, filename)
     call mw%barrier()
   end do
 
+  ! WRITE HEADER BEFORE INITIALIZING PARALLEL HDF5 !
+   if (mw%talk) then
+    call h5%init(__FILE__, __LINE__)
+    call h5%open_file('write', trim(filename))
+    call lo_h5_store_data(uc%latticevectors*lo_bohr_to_A, h5%file_id, 'unitcell_latticevectors', enhet='A')
+    call lo_h5_store_data(ss%latticevectors*lo_bohr_to_A, h5%file_id, 'supercell_latticevectors', enhet='A')
+    call lo_h5_store_data(uc%r, h5%file_id, 'unitcell_positions', enhet='dimensionless')
+    call lo_h5_store_data(ss%r, h5%file_id, 'supercell_positions', enhet='dimensionless')
+    call lo_h5_store_data(uc%atomic_number, h5%file_id, 'unitcell_atomic_numbers', enhet='e')
+    call lo_h5_store_data(ss%atomic_number, h5%file_id, 'supercell_atomic_numbers', enhet='e')
+    call h5%close_file()
+    call h5%destroy(__FILE__, __LINE__)
+  end if
+
   ! ===== HDF5 setup =====
   call h5open_f(h5err)
 
@@ -524,15 +538,7 @@ subroutine write_hdf5_mpi(cc, uc, ss, mw, filename)
 !   end if
 
   ! Only HEADER_RANK writes the small header payloads
-  if (mw%talk) then
-
-
-    call lo_h5_store_data(uc%latticevectors*lo_bohr_to_A, file_id, 'unitcell_latticevectors', enhet='A')
-    call lo_h5_store_data(ss%latticevectors*lo_bohr_to_A, file_id, 'supercell_latticevectors', enhet='A')
-    call lo_h5_store_data(uc%r, file_id, 'unitcell_positions', enhet='dimensionless')
-    call lo_h5_store_data(ss%r, file_id, 'supercell_positions', enhet='dimensionless')
-    call lo_h5_store_data(uc%atomic_number, file_id, 'unitcell_atomic_numbers', enhet='e')
-    call lo_h5_store_data(ss%atomic_number, file_id, 'supercell_atomic_numbers', enhet='e')
+!   if (mw%talk) then
 
     !  if (allocated(cc%extra%unitcell_latticevectors)) then
     !     call h5dwrite_f(dset_ucell_lv, H5T_NATIVE_DOUBLE, cc%extra%unitcell_latticevectors, &
@@ -546,7 +552,7 @@ subroutine write_hdf5_mpi(cc, uc, ss, mw, filename)
     !     call h5dwrite_f(dset_atnums, H5T_NATIVE_INTEGER, cc%atomic_numbers, &
     !                     (/ int(size(cc%atomic_numbers),HSIZE_T) /), h5err)
     !  end if
-  end if
+!   end if
 
   ! Close header datasets if they were created
 !   if (allocated(cc%extra%unitcell_latticevectors)) call h5dclose_f(dset_ucell_lv, h5err)

@@ -71,7 +71,7 @@ subroutine generate(dt,particles,basis,cutoff,verbosity,mw,tolerance)
     !> Tolerance
     real(flyt), intent(in), optional :: tolerance
 
-    integer, parameter :: verletlist_crossover=800 ! with fever particles than this it's not worth using a verlet list.
+    integer, parameter :: verletlist_crossover=10000 ! with fever particles than this it's not worth using a verlet list.
     integer, parameter :: maxnbox=50 ! largest number of Verlet boxes. Should be plenty for anything reasonable.
     real(flyt) :: cutoffbuf  ! it is bad if the cutoff is exactly on a shell, so buffer it a little.
 

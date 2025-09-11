@@ -446,7 +446,7 @@ subroutine write_hdf5_mpi(cc, mw, filename)
 
   ! Sizes (local/global) and offsets
   integer :: na, nt_local, nt_global, offset_ccs
-  integer(HSIZE_T) :: dims_g3(3), dims_l3(3), start3(3), count3(3)
+  integer(HSIZE_T) :: dims_g3(3), dims_l3(3), start3(3), count3(3), chunk_dims3(3)
   integer(HSIZE_T) :: dims_g1(1), dims_l1(1), start1(1), count1(1)
 
   ! HDF5 handles
@@ -455,7 +455,7 @@ subroutine write_hdf5_mpi(cc, mw, filename)
   integer(HID_T) :: dset_pos, dset_vel
   integer(HID_T) :: dset_ke, dset_pe_dd, dset_pe_h2, dset_pe_h3, dset_pe_h4
   integer(HID_T) :: filespace3, memspace3, filespace1, memspace1
-  integer(HID_T) :: dxpl
+  integer(HID_T) :: dxpl, dcpl
 
   integer :: h5err, p 
 
@@ -491,48 +491,57 @@ subroutine write_hdf5_mpi(cc, mw, filename)
   call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, h5err, access_prp=fapl)
 
   ! Create groups collectively
-  call h5gcreate_f(file_id, "header", grp_header, h5err)
+!   call h5gcreate_f(file_id, "header", grp_header, h5err)
   call h5gcreate_f(file_id, "data",   grp_data,   h5err)
 
   ! ===== Header datasets (created collectively, written by HEADER_RANK only) =====
   ! Example: unitcell/supercell lattice vectors and atomic numbers
-  if (allocated(cc%extra%unitcell_latticevectors)) then
-     dims_2x = (/ int(size(cc%extra%unitcell_latticevectors,1),HSIZE_T), &
-                  int(size(cc%extra%unitcell_latticevectors,2),HSIZE_T) /)
-     call h5screate_simple_f(2, dims_2x, filespace3, h5err)
-     call h5dcreate_f(grp_header, "unitcell_latticevectors", H5T_NATIVE_DOUBLE, filespace3, dset_ucell_lv, h5err)
-     call h5sclose_f(filespace3, h5err)
-  end if
+!   if (allocated(cc%extra%unitcell_latticevectors)) then
+!      dims_2x = (/ int(size(cc%extra%unitcell_latticevectors,1),HSIZE_T), &
+!                   int(size(cc%extra%unitcell_latticevectors,2),HSIZE_T) /)
+!      call h5screate_simple_f(2, dims_2x, filespace3, h5err)
+!      call h5dcreate_f(grp_header, "unitcell_latticevectors", H5T_NATIVE_DOUBLE, filespace3, dset_ucell_lv, h5err)
+!      call h5sclose_f(filespace3, h5err)
+!   end if
 
-  if (allocated(cc%extra%supercell_latticevectors)) then
-     dims_2x = (/ int(size(cc%extra%supercell_latticevectors,1),HSIZE_T), &
-                  int(size(cc%extra%supercell_latticevectors,2),HSIZE_T) /)
-     call h5screate_simple_f(2, dims_2x, filespace3, h5err)
-     call h5dcreate_f(grp_header, "supercell_latticevectors", H5T_NATIVE_DOUBLE, filespace3, dset_scell_lv, h5err)
-     call h5sclose_f(filespace3, h5err)
-  end if
+!   if (allocated(cc%extra%supercell_latticevectors)) then
+!      dims_2x = (/ int(size(cc%extra%supercell_latticevectors,1),HSIZE_T), &
+!                   int(size(cc%extra%supercell_latticevectors,2),HSIZE_T) /)
+!      call h5screate_simple_f(2, dims_2x, filespace3, h5err)
+!      call h5dcreate_f(grp_header, "supercell_latticevectors", H5T_NATIVE_DOUBLE, filespace3, dset_scell_lv, h5err)
+!      call h5sclose_f(filespace3, h5err)
+!   end if
 
-  if (allocated(cc%atomic_numbers)) then
-     dims_1x = (/ int(size(cc%atomic_numbers,1),HSIZE_T) /)
-     call h5screate_simple_f(1, dims_1x, filespace1, h5err)
-     call h5dcreate_f(grp_header, "atomic_numbers", H5T_NATIVE_INTEGER, filespace1, dset_atnums, h5err)
-     call h5sclose_f(filespace1, h5err)
-  end if
+!   if (allocated(cc%atomic_numbers)) then
+!      dims_1x = (/ int(size(cc%atomic_numbers,1),HSIZE_T) /)
+!      call h5screate_simple_f(1, dims_1x, filespace1, h5err)
+!      call h5dcreate_f(grp_header, "atomic_numbers", H5T_NATIVE_INTEGER, filespace1, dset_atnums, h5err)
+!      call h5sclose_f(filespace1, h5err)
+!   end if
 
   ! Only HEADER_RANK writes the small header payloads
   if (mw%talk) then
-     if (allocated(cc%extra%unitcell_latticevectors)) then
-        call h5dwrite_f(dset_ucell_lv, H5T_NATIVE_DOUBLE, cc%extra%unitcell_latticevectors, &
-                        shape(cc%extra%unitcell_latticevectors, kind=HSIZE_T), h5err)
-     end if
-     if (allocated(cc%extra%supercell_latticevectors)) then
-        call h5dwrite_f(dset_scell_lv, H5T_NATIVE_DOUBLE, cc%extra%supercell_latticevectors, &
-                        shape(cc%extra%supercell_latticevectors, kind=HSIZE_T), h5err)
-     end if
-     if (allocated(cc%atomic_numbers)) then
-        call h5dwrite_f(dset_atnums, H5T_NATIVE_INTEGER, cc%atomic_numbers, &
-                        (/ int(size(cc%atomic_numbers),HSIZE_T) /), h5err)
-     end if
+
+
+    call lo_h5_store_data(uc%latticevectors*lo_bohr_to_A, file_id, 'unitcell_latticevectors', enhet='A')
+    call lo_h5_store_data(ss%latticevectors*lo_bohr_to_A, file_id, 'supercell_latticevectors', enhet='A')
+    call lo_h5_store_data(uc%r, file_id, 'unitcell_positions', enhet='dimensionless')
+    call lo_h5_store_data(ss%r, file_id, 'supercell_positions', enhet='dimensionless')
+    call lo_h5_store_data(uc%atomic_number, file_id, 'unitcell_atomic_numbers', enhet='e')
+    call lo_h5_store_data(ss%atomic_number, file_id, 'supercell_atomic_numbers', enhet='e')
+
+    !  if (allocated(cc%extra%unitcell_latticevectors)) then
+    !     call h5dwrite_f(dset_ucell_lv, H5T_NATIVE_DOUBLE, cc%extra%unitcell_latticevectors, &
+    !                     shape(cc%extra%unitcell_latticevectors, kind=HSIZE_T), h5err)
+    !  end if
+    !  if (allocated(cc%extra%supercell_latticevectors)) then
+    !     call h5dwrite_f(dset_scell_lv, H5T_NATIVE_DOUBLE, cc%extra%supercell_latticevectors, &
+    !                     shape(cc%extra%supercell_latticevectors, kind=HSIZE_T), h5err)
+    !  end if
+    !  if (allocated(cc%atomic_numbers)) then
+    !     call h5dwrite_f(dset_atnums, H5T_NATIVE_INTEGER, cc%atomic_numbers, &
+    !                     (/ int(size(cc%atomic_numbers),HSIZE_T) /), h5err)
+    !  end if
   end if
 
   ! Close header datasets if they were created
@@ -544,16 +553,27 @@ subroutine write_hdf5_mpi(cc, mw, filename)
 
   ! ===== Create global 3D datasets for positions/velocities (collective) =====
   dims_g3 = (/ 3_hsize_t, int(na,HSIZE_T), int(nt_global,HSIZE_T) /)
+  chunk_dims3 = (/ 3_hsize_t, int(na,HSIZE_T), min(1000_hsize_t, int(nt_global,HSIZE_T)) /)
 
+  ! compression stuff for positions
+  call h5pcreate_f(H5P_DATASET_CREATE_F, dcpl, h5err)
+  call h5pset_chunk_f(dcpl, 3, chunk_dims3, h5err)
+  call h5pset_shuffle_f(dcpl, h5err) ! aparently good for floats
+  call h5pset_deflate_f(dcpl, 6, h5err)
+
+  ! define positions dataset
   call h5screate_simple_f(3, dims_g3, filespace3, h5err)
-  call h5dcreate_f(grp_data, "positions",  H5T_NATIVE_DOUBLE, filespace3, dset_pos, h5err)
-  call h5dclose_f(dset_pos, h5err)   ! close/reopen not needed, but free filespace3 reuse clarity
+  call h5dcreate_f(grp_data, "positions",  H5T_NATIVE_DOUBLE, filespace3, dset_pos, h5err, dcpl)
+  call h5dclose_f(dset_pos, h5err) 
   call h5sclose_f(filespace3, h5err)
 
+  ! define velocities dataset
   call h5screate_simple_f(3, dims_g3, filespace3, h5err)
-  call h5dcreate_f(grp_data, "velocities", H5T_NATIVE_DOUBLE, filespace3, dset_vel, h5err)
+  call h5dcreate_f(grp_data, "velocities", H5T_NATIVE_DOUBLE, filespace3, dset_vel, h5err, dcpl)
   call h5dclose_f(dset_vel, h5err)
   call h5sclose_f(filespace3, h5err)
+
+  call h5pclose_f(dcpl, h5err)
 
   ! Energies (4 vectors) — create now
   dims_g1 = (/ int(nt_global,HSIZE_T) /)
@@ -686,7 +706,7 @@ subroutine write_hdf5_mpi(cc, mw, filename)
   ! ===== Tear down =====
   call h5pclose_f(dxpl, h5err)
   call h5gclose_f(grp_data,   h5err)
-  call h5gclose_f(grp_header, h5err)
+!   call h5gclose_f(grp_header, h5err)
   call h5fclose_f(file_id,    h5err)
   call h5pclose_f(fapl,       h5err)
   call h5close_f(h5err)

@@ -437,9 +437,13 @@ end subroutine write_hdf5_header
 !>   cc%r, cc%v :: shape (3, NA, NT_local_on_this_rank)
 !>   cc%stat%*   :: length NT_local_on_this_rank (same per-rank NT used for energies)
 !>
-subroutine write_hdf5_mpi(cc, mw, filename)
+subroutine write_hdf5_mpi(cc, uc, ss, mw, filename)
 
   class(lo_canonical_configs), intent(in) :: cc
+  !> unitcell
+  type(lo_crystalstructure), intent(in) :: uc
+  !> supercell
+  type(lo_crystalstructure), intent(inout) :: ss
   type(lo_mpi_helper), intent(inout) :: mw
   character(len=*), intent(in) :: filename
 

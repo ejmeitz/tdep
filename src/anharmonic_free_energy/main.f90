@@ -459,12 +459,12 @@ summary: block
             write(*, *) ''
             write(*, *) 'Internal energy components'
             write(*, '(4(1X,A24))') 'Harmonic [eV / atom]', 'Third Order Part [eV / atom]', 'Fourth Order Part [eV / atom]', 'Total [eV / atom]'
-            write(*, '(4(1X,F24.12))') charm, (thermo%u3 * lo_Hartree_to_eV), (thermo%u4  * lo_Hartree_to_eV), charm + (thermo%u3 * lo_Hartree_to_eV) + (thermo%u4  * lo_Hartree_to_eV)
+            write(*, '(4(1X,F24.12))') uharm, (thermo%u3 * lo_Hartree_to_eV), (thermo%u4  * lo_Hartree_to_eV), uharm + (thermo%u3 * lo_Hartree_to_eV) + (thermo%u4  * lo_Hartree_to_eV)
             
             write(*, *) ''
             write(*, *) 'Entropy components'
             write(*, '(4(1X,A24))') 'Harmonic [kB]', 'Third Order Part [kB]', 'Fourth Order Part [kB]', 'Total [kB]'
-            write(*, '(4(1X,F24.12))') charm, (thermo%s3 / lo_kb_Hartree), (thermo%s4  / lo_kb_Hartree), charm + (thermo%s3 / lo_kb_Hartree) + (thermo%s4  / lo_kb_Hartree)
+            write(*, '(4(1X,F24.12))') sharm, (thermo%s3 / lo_kb_Hartree), (thermo%s4  / lo_kb_Hartree), sharm + (thermo%s3 / lo_kb_Hartree) + (thermo%s4  / lo_kb_Hartree)
 
             write(*, *) 'Free energy components'
             write(*, '(3(1X,A29))') 'Harmonic [eV / atom]', 'Third Order Part [eV / atom]', 'Fourth Order Part [eV / atom]'

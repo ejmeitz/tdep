@@ -452,10 +452,20 @@ summary: block
             write(*, '(2(1X,F24.12))') fharm, thermo%f3 * lo_Hartree_to_eV
         else if(opts%thirdorder .and. opts%fourthorder) then
             write(*, *) ''
-            write(*, *) 'Heat capacity with no cumulant corrections'
+            write(*, *) 'Heat capacity components'
             write(*, '(4(1X,A24))') 'Harmonic [kB]', 'Third Order Part [kB]', 'Fourth Order Part [kB]', 'Total [kB]'
             write(*, '(4(1X,F24.12))') charm, (thermo%cv3 / lo_kb_Hartree), (thermo%cv4  / lo_kb_Hartree), charm + (thermo%cv3 / lo_kb_Hartree) + (thermo%cv4  / lo_kb_Hartree)
             
+            write(*, *) ''
+            write(*, *) 'Internal energy components'
+            write(*, '(4(1X,A24))') 'Harmonic [eV / atom]', 'Third Order Part [eV / atom]', 'Fourth Order Part [eV / atom]', 'Total [eV / atom]'
+            write(*, '(4(1X,F24.12))') charm, (thermo%u3 * lo_Hartree_to_eV), (thermo%u4  * lo_Hartree_to_eV), charm + (thermo%u3 * lo_Hartree_to_eV) + (thermo%u4  * lo_Hartree_to_eV)
+            
+            write(*, *) ''
+            write(*, *) 'Entropy components'
+            write(*, '(4(1X,A24))') 'Harmonic [kB]', 'Third Order Part [kB]', 'Fourth Order Part [kB]', 'Total [kB]'
+            write(*, '(4(1X,F24.12))') charm, (thermo%s3 / lo_kb_Hartree), (thermo%s4  / lo_kb_Hartree), charm + (thermo%s3 / lo_kb_Hartree) + (thermo%s4  / lo_kb_Hartree)
+
             write(*, *) 'Free energy components'
             write(*, '(3(1X,A29))') 'Harmonic [eV / atom]', 'Third Order Part [eV / atom]', 'Fourth Order Part [eV / atom]'
             write(*, '(3(1X,F24.12))') fharm, thermo%f3 * lo_Hartree_to_eV, thermo%f4 * lo_Hartree_to_eV
